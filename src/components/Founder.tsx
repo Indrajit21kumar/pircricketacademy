@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Trophy, CheckCircle, Quote, Shield, Star } from "lucide-react";
+import { Trophy, CheckCircle, Quote, Shield, Star, Heart, Lightbulb } from "lucide-react";
 
 const indrajitStats = [
   { label: "FC Matches", value: "13" },
@@ -64,7 +64,7 @@ export default function Founder() {
         </motion.div>
 
         {/* Founder cards */}
-        <div className="grid md:grid-cols-3 gap-6 mb-14">
+        <div className="grid md:grid-cols-3 gap-6 mb-10">
           {founders.map(({ initials, name, role, roleColor, photo, highlight, credentials, showStats }: any, i: number) => (
             <motion.div key={name} initial={{opacity:0,y:20}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:i*0.1}} className="bg-card border border-secondary/20 rounded-2xl overflow-hidden flex flex-col">
               {/* Photo / Avatar */}
@@ -107,6 +107,70 @@ export default function Founder() {
           ))}
         </div>
 
+        {/* Advisory Panel */}
+        <motion.div initial={{opacity:0,y:20}} whileInView={{opacity:1,y:0}} viewport={{once:true}} className="mb-14">
+          <div className="text-center mb-8">
+            <span className="inline-block bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-full px-4 py-1 text-sm font-bold uppercase tracking-widest">Advisory & Support</span>
+          </div>
+          <div className="grid sm:grid-cols-2 gap-6 max-w-3xl mx-auto">
+
+            {/* Dr. V.P. Singh */}
+            <motion.div initial={{opacity:0,y:16}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:0.1}}
+              className="bg-card border border-red-500/20 rounded-2xl overflow-hidden flex flex-col">
+              <div className="relative h-48 overflow-hidden bg-gradient-to-br from-red-900/30 to-red-950/10">
+                {true ? (
+                  <div className="h-full flex items-center justify-center">
+                    <div className="w-24 h-24 bg-red-500/15 border-2 border-red-500/30 rounded-full flex items-center justify-center">
+                      <Heart className="h-10 w-10 text-red-400" />
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+              <div className="p-5 flex flex-col flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs font-bold uppercase tracking-wider text-red-400">Powered by Savera</span>
+                </div>
+                <p className="font-display font-bold text-lg text-foreground mb-1">Dr. V.P. Singh</p>
+                <p className="text-red-400 text-xs font-semibold mb-3">Director, Savera Cancer & Multi Speciality Hospital</p>
+                <ul className="space-y-1.5 mt-auto">
+                  {["Savera Cancer & Multi Speciality Hospital", "Health · Healing · Hope", "Medical support partner for PIR Academy"].map(c => (
+                    <li key={c} className="flex items-start gap-2 text-xs text-foreground/70">
+                      <CheckCircle className="h-3.5 w-3.5 text-red-400 shrink-0 mt-0.5" />{c}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </motion.div>
+
+            {/* Nikhil Singh */}
+            <motion.div initial={{opacity:0,y:16}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:0.2}}
+              className="bg-card border border-blue-500/20 rounded-2xl overflow-hidden flex flex-col">
+              <div className="relative h-48 overflow-hidden bg-gradient-to-br from-blue-900/30 to-blue-950/10">
+                <div className="h-full flex items-center justify-center">
+                  <div className="w-24 h-24 bg-blue-500/15 border-2 border-blue-500/30 rounded-full flex items-center justify-center">
+                    <Lightbulb className="h-10 w-10 text-blue-400" />
+                  </div>
+                </div>
+              </div>
+              <div className="p-5 flex flex-col flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs font-bold uppercase tracking-wider text-blue-400">Technical Adviser</span>
+                </div>
+                <p className="font-display font-bold text-lg text-foreground mb-1">Nikhil Singh</p>
+                <p className="text-blue-400 text-xs font-semibold mb-3">Technical Adviser, PIR Cricket Academy</p>
+                <ul className="space-y-1.5 mt-auto">
+                  {["Strategic & technical advisory", "Sports infrastructure development", "Growth & outreach planning"].map(c => (
+                    <li key={c} className="flex items-start gap-2 text-xs text-foreground/70">
+                      <CheckCircle className="h-3.5 w-3.5 text-blue-400 shrink-0 mt-0.5" />{c}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </motion.div>
+
+          </div>
+        </motion.div>
+
         {/* Founder story + photos */}
         <div className="grid md:grid-cols-2 gap-12 items-start mb-10">
           <motion.div initial={{opacity:0,x:-20}} whileInView={{opacity:1,x:0}} viewport={{once:true}}>
@@ -136,7 +200,7 @@ export default function Founder() {
                 </div>
                 <div className="flex items-start gap-2 text-xs text-foreground/70 bg-secondary/5 rounded-lg px-3 py-2">
                   <CheckCircle className="h-3.5 w-3.5 text-secondary shrink-0 mt-0.5" />
-                  <span><strong className="text-foreground">Powered by</strong> Savera Cancer & Multi Speciality Hospital — Dr. V.P. Singh, Director · Health · Healing · Hope</span>
+                  <span><strong className="text-foreground">Powered by</strong> Savera Cancer & Multi Speciality Hospital</span>
                 </div>
                 <div className="flex items-start gap-2 text-xs text-foreground/70 bg-secondary/5 rounded-lg px-3 py-2">
                   <CheckCircle className="h-3.5 w-3.5 text-secondary shrink-0 mt-0.5" />
