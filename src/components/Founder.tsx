@@ -16,7 +16,7 @@ const founders = [
     name: "Indrajit Kumar",
     role: "Founder & Mentor",
     roleColor: "text-secondary",
-    photo: "/images/indrajit-portrait.jpeg",
+    photo: "/images/indrajit-linkedin.png",
     highlight: "Bihar's First Double Centurion in Ranji Trophy (Post 2018 BCCI Affiliation)",
     credentials: [
       "Right-hand Bat · Right-arm Medium · Bihar",
@@ -30,7 +30,7 @@ const founders = [
     name: "Pankaj Mishra",
     role: "Co-Founder & Head Coach",
     roleColor: "text-secondary",
-    photo: null,
+    photo: "/images/pankaj-mishra.jpeg",
     highlight: "BCCI Level A Certified Coach, Bihar Cricket Association",
     credentials: [
       "BCCI Level A Certified Coach",
@@ -43,7 +43,7 @@ const founders = [
     name: "Ritesh Ranjan",
     role: "Co-Founder & Coach",
     roleColor: "text-secondary",
-    photo: null,
+    photo: "/images/ritesh-ranjan.png",
     highlight: "Patna University Cricket Player & Sports Promoter, Bihar",
     credentials: [
       "Patna University Cricket Player",
@@ -117,14 +117,9 @@ export default function Founder() {
             {/* Dr. V.P. Singh */}
             <motion.div initial={{opacity:0,y:16}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:0.1}}
               className="bg-card border border-red-500/20 rounded-2xl overflow-hidden flex flex-col">
-              <div className="relative h-48 overflow-hidden bg-gradient-to-br from-red-900/30 to-red-950/10">
-                {true ? (
-                  <div className="h-full flex items-center justify-center">
-                    <div className="w-24 h-24 bg-red-500/15 border-2 border-red-500/30 rounded-full flex items-center justify-center">
-                      <Heart className="h-10 w-10 text-red-400" />
-                    </div>
-                  </div>
-                ) : null}
+              <div className="relative h-48 overflow-hidden">
+                <img src="/images/vp-singh.png" alt="Dr. V.P. Singh" className="w-full h-full object-cover object-top" />
+                <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent" />
               </div>
               <div className="p-5 flex flex-col flex-1">
                 <div className="flex items-center gap-2 mb-1">
@@ -145,12 +140,9 @@ export default function Founder() {
             {/* Nikhil Singh */}
             <motion.div initial={{opacity:0,y:16}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:0.2}}
               className="bg-card border border-blue-500/20 rounded-2xl overflow-hidden flex flex-col">
-              <div className="relative h-48 overflow-hidden bg-gradient-to-br from-blue-900/30 to-blue-950/10">
-                <div className="h-full flex items-center justify-center">
-                  <div className="w-24 h-24 bg-blue-500/15 border-2 border-blue-500/30 rounded-full flex items-center justify-center">
-                    <Lightbulb className="h-10 w-10 text-blue-400" />
-                  </div>
-                </div>
+              <div className="relative h-48 overflow-hidden">
+                <img src="/images/nikhil-singh.jpeg" alt="Nikhil Singh" className="w-full h-full object-cover object-top" />
+                <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent" />
               </div>
               <div className="p-5 flex flex-col flex-1">
                 <div className="flex items-center gap-2 mb-1">
