@@ -30,7 +30,7 @@ const founders = [
     name: "Pankaj Mishra",
     role: "Co-Founder & Head Coach",
     roleColor: "text-secondary",
-    photo: null,
+    photo: "/images/pankaj-mishra.jpeg",
     highlight: "BCCI Level A Certified Coach, Bihar Cricket Association",
     credentials: [
       "BCCI Level A Certified Coach",
