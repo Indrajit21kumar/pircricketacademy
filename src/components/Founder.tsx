@@ -30,7 +30,7 @@ const founders = [
     name: "Pankaj Mishra",
     role: "Co-Founder & Head Coach",
     roleColor: "text-secondary",
-    photo: "/images/pankaj-mishra.jpeg",
+    photo: null,
     highlight: "BCCI Level A Certified Coach, Bihar Cricket Association",
     credentials: [
       "BCCI Level A Certified Coach",
@@ -70,7 +70,7 @@ export default function Founder() {
               {/* Photo / Avatar */}
               {photo ? (
                 <div className="relative h-56 overflow-hidden">
-                  <img src={photo} alt={name} className="w-full h-full object-cover object-top" />
+                  <img src={photo} alt={name} className="w-full h-full object-cover object-center" />
                   <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent" />
                 </div>
               ) : (
@@ -118,7 +118,7 @@ export default function Founder() {
             <motion.div initial={{opacity:0,y:16}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:0.1}}
               className="bg-card border border-red-500/20 rounded-2xl overflow-hidden flex flex-col">
               <div className="relative h-48 overflow-hidden">
-                <img src="/images/vp-singh.png" alt="Dr. V.P. Singh" className="w-full h-full object-cover object-top" />
+                <img src="/images/vp-singh.png" alt="Dr. V.P. Singh" className="w-full h-full object-cover object-center" />
                 <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent" />
               </div>
               <div className="p-5 flex flex-col flex-1">
@@ -141,7 +141,7 @@ export default function Founder() {
             <motion.div initial={{opacity:0,y:16}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:0.2}}
               className="bg-card border border-blue-500/20 rounded-2xl overflow-hidden flex flex-col">
               <div className="relative h-48 overflow-hidden">
-                <img src="/images/nikhil-singh.jpeg" alt="Nikhil Singh" className="w-full h-full object-cover object-top" />
+                <img src="/images/nikhil-singh.jpeg" alt="Nikhil Singh" className="w-full h-full object-cover object-center" />
                 <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent" />
               </div>
               <div className="p-5 flex flex-col flex-1">
