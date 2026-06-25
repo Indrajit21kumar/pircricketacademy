@@ -69,13 +69,13 @@ export default function Founder() {
             <motion.div key={name} initial={{opacity:0,y:20}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:i*0.1}} className="bg-card border border-secondary/20 rounded-2xl overflow-hidden flex flex-col">
               {/* Photo / Avatar */}
               {photo ? (
-                <div className="relative h-56 overflow-hidden">
-                  <img src={photo} alt={name} className="w-full h-full object-cover object-center" />
+                <div className="relative overflow-hidden bg-secondary/5" style={{height:"280px"}}>
+                  <img src={photo} alt={name} className="w-full h-full object-cover" style={{objectPosition:"50% 15%"}} />
                   <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent" />
                 </div>
               ) : (
-                <div className="h-56 bg-secondary/5 flex items-center justify-center border-b border-border">
-                  <div className="w-24 h-24 bg-secondary/15 border-2 border-secondary/40 rounded-full flex items-center justify-center font-display font-bold text-secondary text-3xl">{initials}</div>
+                <div className="bg-secondary/5 flex items-center justify-center border-b border-border" style={{height:"280px"}}>
+                  <div className="w-28 h-28 bg-secondary/15 border-2 border-secondary/40 rounded-full flex items-center justify-center font-display font-bold text-secondary text-3xl">{initials}</div>
                 </div>
               )}
               <div className="p-6 flex flex-col flex-1">
@@ -117,8 +117,8 @@ export default function Founder() {
             {/* Dr. V.P. Singh */}
             <motion.div initial={{opacity:0,y:16}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:0.1}}
               className="bg-card border border-red-500/20 rounded-2xl overflow-hidden flex flex-col">
-              <div className="relative h-48 overflow-hidden">
-                <img src="/images/vp-singh.png" alt="Dr. V.P. Singh" className="w-full h-full object-cover object-center" />
+              <div className="relative overflow-hidden" style={{height:"240px"}}>
+                <img src="/images/vp-singh.png" alt="Dr. V.P. Singh" className="w-full h-full object-cover" style={{objectPosition:"50% 10%"}} />
                 <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent" />
               </div>
               <div className="p-5 flex flex-col flex-1">
@@ -140,8 +140,8 @@ export default function Founder() {
             {/* Nikhil Singh */}
             <motion.div initial={{opacity:0,y:16}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:0.2}}
               className="bg-card border border-blue-500/20 rounded-2xl overflow-hidden flex flex-col">
-              <div className="relative h-48 overflow-hidden">
-                <img src="/images/nikhil-singh.jpeg" alt="Nikhil Singh" className="w-full h-full object-cover object-center" />
+              <div className="relative overflow-hidden" style={{height:"240px"}}>
+                <img src="/images/nikhil-singh.jpeg" alt="Nikhil Singh" className="w-full h-full object-cover" style={{objectPosition:"50% 15%"}} />
                 <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent" />
               </div>
               <div className="p-5 flex flex-col flex-1">
