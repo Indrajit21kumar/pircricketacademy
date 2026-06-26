@@ -468,19 +468,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  if (!process.env.DATABASE_URL) {
-    return res.status(500).json({ error: "DATABASE_URL is not configured on the server" });
-  }
-
-  // _p is injected by vercel.json rewrite: /api/(.*)  →  /api/router?_p=$1
-  // This is the most reliable way to get the original path on Vercel.
-  const pParam = Array.isArray(req.query._p) ? req.query._p[0] : (req.query._p ?? "");
-  const segments = pParam
-    ? pParam.split("/").filter(Boolean)
-    : (req.url || "").split("?")[0].replace(/^\/api\/?/, "").split("/").filter(Boolean);
-  const [resource, ...sub] = segments;
-
   try {
+    if (!process.env.DATABASE_URL) {
+      return res.status(500).json({ error: "DATABASE_URL is not configured on the server" });
+    }
+
+    // _p is injected by vercel.json rewrite: /api/:path*  →  /api/router?_p=:path*
+    const pParam = Array.isArray(req.query._p) ? req.query._p[0] : (req.query._p ?? "");
+    const segments = pParam
+      ? pParam.split("/").filter(Boolean)
+      : (req.url || "").split("?")[0].replace(/^\/api\/?/, "").split("/").filter(Boolean);
+    const [resource, ...sub] = segments;
+
     switch (resource) {
       case "auth":           return handleAuth(req, res, sub);
       case "inquiries":      return handleInquiries(req, res, sub);
@@ -501,6 +500,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       default:               return res.status(404).json({ error: `Unknown resource: ${resource}` });
     }
   } catch (e: any) {
-    return res.status(400).json({ error: e.message });
+    return res.status(500).json({
+      error: e.message,
+      stack: (e.stack || "").split("\n").slice(0, 4).join(" | "),
+    });
   }
 }
