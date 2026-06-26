@@ -4,6 +4,7 @@ import Hero from "@/components/Hero";
 import FoundingBatch from "@/components/FoundingBatch";
 import WhyPIRSection from "@/components/WhyPIRSection";
 import Programs from "@/components/Programs";
+import Fees from "@/components/Fees";
 import Facilities from "@/components/Facilities";
 import Founder from "@/components/Founder";
 import Partners from "@/components/Partners";
@@ -20,6 +21,7 @@ export default function Home() {
       <FoundingBatch />
       <WhyPIRSection />
       <Programs />
+      <Fees />
       <Facilities />
       <Founder />
       <Partners />

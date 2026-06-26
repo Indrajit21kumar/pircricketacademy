@@ -5,6 +5,7 @@ import { Menu, X } from "lucide-react";
 const NAV = [
   { label: "About", href: "#about" },
   { label: "Programs", href: "#programs" },
+  { label: "Fees", href: "#fees" },
   { label: "Facilities", href: "#facilities" },
   { label: "Founder", href: "#founder" },
   { label: "Why PIR?", href: "/why-pir", external: true },
