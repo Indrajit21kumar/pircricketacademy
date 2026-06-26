@@ -101,10 +101,39 @@ export const attendance = pgTable("attendance", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export type Inquiry    = typeof inquiries.$inferSelect;
-export type Admission  = typeof admissions.$inferSelect;
-export type Booking    = typeof bookings.$inferSelect;
-export type User       = typeof users.$inferSelect;
-export type Batch      = typeof batches.$inferSelect;
-export type Student    = typeof students.$inferSelect;
-export type Attendance = typeof attendance.$inferSelect;
+export const sessionNotes = pgTable("session_notes", {
+  id: serial("id").primaryKey(),
+  batchId: integer("batch_id").references(() => batches.id),
+  sessionDate: text("session_date").notNull(),
+  coachName: text("coach_name").notNull(),
+  drills: text("drills"),          // what was practiced
+  highlights: text("highlights"),  // positive moments
+  improvements: text("improvements"), // areas to work on
+  notes: text("notes"),            // general notes
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const playerRatings = pgTable("player_ratings", {
+  id: serial("id").primaryKey(),
+  studentId: integer("student_id").references(() => students.id).notNull(),
+  batchId: integer("batch_id").references(() => batches.id),
+  sessionDate: text("session_date").notNull(),
+  coachName: text("coach_name").notNull(),
+  batting: integer("batting"),    // 1-10
+  bowling: integer("bowling"),    // 1-10
+  fielding: integer("fielding"),  // 1-10
+  fitness: integer("fitness"),    // 1-10
+  attitude: integer("attitude"),  // 1-10
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type Inquiry      = typeof inquiries.$inferSelect;
+export type Admission    = typeof admissions.$inferSelect;
+export type Booking      = typeof bookings.$inferSelect;
+export type User         = typeof users.$inferSelect;
+export type Batch        = typeof batches.$inferSelect;
+export type Student      = typeof students.$inferSelect;
+export type Attendance   = typeof attendance.$inferSelect;
+export type SessionNote  = typeof sessionNotes.$inferSelect;
+export type PlayerRating = typeof playerRatings.$inferSelect;
