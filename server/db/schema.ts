@@ -101,6 +101,27 @@ export const attendance = pgTable("attendance", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const fees = pgTable("fees", {
+  id: serial("id").primaryKey(),
+  studentId: integer("student_id").references(() => students.id).notNull(),
+  month: text("month").notNull(),        // YYYY-MM
+  amount: integer("amount").notNull(),   // in rupees
+  paid: boolean("paid").default(false).notNull(),
+  paidDate: text("paid_date"),
+  receiptNo: text("receipt_no"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  audience: text("audience").default("all").notNull(), // all | batch:<id> | student:<id>
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const sessionNotes = pgTable("session_notes", {
   id: serial("id").primaryKey(),
   batchId: integer("batch_id").references(() => batches.id),
@@ -135,5 +156,7 @@ export type User         = typeof users.$inferSelect;
 export type Batch        = typeof batches.$inferSelect;
 export type Student      = typeof students.$inferSelect;
 export type Attendance   = typeof attendance.$inferSelect;
-export type SessionNote  = typeof sessionNotes.$inferSelect;
-export type PlayerRating = typeof playerRatings.$inferSelect;
+export type SessionNote    = typeof sessionNotes.$inferSelect;
+export type PlayerRating   = typeof playerRatings.$inferSelect;
+export type Fee            = typeof fees.$inferSelect;
+export type Notification   = typeof notifications.$inferSelect;
