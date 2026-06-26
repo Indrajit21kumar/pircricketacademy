@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { Users, TrendingUp, DollarSign, AlertCircle, Activity, BarChart3, Calendar, CheckCircle, Clock, X, RefreshCw } from "lucide-react";
+import { Link } from "wouter";
+import { Users, TrendingUp, DollarSign, AlertCircle, Activity, BarChart3, Calendar, CheckCircle, Clock, X, RefreshCw, ExternalLink } from "lucide-react";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface Admission { id:number; studentName:string; ageGroup:string; parentName:string; phone:string; createdAt:string; status:string; isTrial:boolean; }
@@ -24,6 +25,14 @@ async function apiFetch(path: string, opts: RequestInit = {}) {
 }
 
 const TABS = ["Dashboard","Inquiries","Admissions","Bookings"];
+
+const MODULES = [
+  { label: "Students & QR",  href: "/admin/students",  color: "text-blue-400",   bg: "bg-blue-400/10" },
+  { label: "Attendance",     href: "/admin/attendance", color: "text-green-400",  bg: "bg-green-400/10" },
+  { label: "Lead CRM",       href: "/admin/crm",        color: "text-orange-400", bg: "bg-orange-400/10" },
+  { label: "Communications", href: "/admin/comms",      color: "text-purple-400", bg: "bg-purple-400/10" },
+  { label: "Calendar",       href: "/admin/calendar",   color: "text-secondary",  bg: "bg-secondary/10" },
+];
 
 // ── Status pill ───────────────────────────────────────────────────────────────
 function StatusBadge({ s }: { s: string }) {
@@ -196,6 +205,20 @@ export default function Admin() {
                 </div>
               ))}
             </div>
+            {/* Module quick-links */}
+            <div className="mb-8">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Management Modules</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                {MODULES.map(m => (
+                  <Link key={m.href} href={m.href}
+                    className={`flex items-center justify-between gap-2 ${m.bg} border border-transparent hover:border-border rounded-2xl px-4 py-3 transition-all group`}>
+                    <span className={`text-sm font-bold ${m.color}`}>{m.label}</span>
+                    <ExternalLink className={`h-3.5 w-3.5 ${m.color} opacity-0 group-hover:opacity-100 transition-opacity shrink-0`} />
+                  </Link>
+                ))}
+              </div>
+            </div>
+
             <div className="grid md:grid-cols-2 gap-6">
               <div className="bg-card border border-border rounded-2xl p-6">
                 <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground mb-4">Recent Applications</h3>

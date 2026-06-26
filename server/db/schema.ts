@@ -178,6 +178,20 @@ export const playerRatings = pgTable("player_ratings", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const events = pgTable("events", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  type: text("type").notNull(), // practice | match | tournament | holiday | cancellation | ground_booking | other
+  date: text("date").notNull(),        // YYYY-MM-DD
+  startTime: text("start_time"),       // HH:MM (24h)
+  endTime: text("end_time"),           // HH:MM (24h)
+  batchId: integer("batch_id").references(() => batches.id), // null = all batches
+  venue: text("venue"),
+  description: text("description"),
+  createdBy: text("created_by").notNull().default("admin"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export type Inquiry      = typeof inquiries.$inferSelect;
 export type Admission    = typeof admissions.$inferSelect;
 export type Booking      = typeof bookings.$inferSelect;
