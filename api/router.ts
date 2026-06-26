@@ -468,9 +468,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  // Parse resource from URL directly — more reliable than req.query.path
-  const rawPath = (req.url || "").split("?")[0]; // e.g. /api/bookings or /api/auth/login
-  const segments = rawPath.replace(/^\/api\/?/, "").split("/").filter(Boolean);
+  // _p is injected by vercel.json rewrite: /api/(.*)  →  /api/router?_p=$1
+  // This is the most reliable way to get the original path on Vercel.
+  const pParam = Array.isArray(req.query._p) ? req.query._p[0] : (req.query._p ?? "");
+  const segments = pParam
+    ? pParam.split("/").filter(Boolean)
+    : (req.url || "").split("?")[0].replace(/^\/api\/?/, "").split("/").filter(Boolean);
   const [resource, ...sub] = segments;
 
   try {
