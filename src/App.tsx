@@ -8,6 +8,7 @@ import Admin from "@/pages/Admin";
 import Student from "@/pages/Student";
 import NotFound from "@/pages/NotFound";
 import StudentsPage from "@/pages/admin/Students";
+import CRMPage from "@/pages/admin/CRM";
 import AttendancePage from "@/pages/admin/Attendance";
 import ScanPage from "@/pages/coach/Scan";
 import CoachPortal from "@/pages/coach/Portal";
@@ -25,6 +26,7 @@ export default function App() {
         <Route path="/admissions" component={Admissions} />
         <Route path="/admin" component={Admin} />
         <Route path="/admin/students" component={StudentsPage} />
+        <Route path="/admin/crm" component={CRMPage} />
         <Route path="/admin/attendance" component={AttendancePage} />
         <Route path="/coach" component={CoachPortal} />
         <Route path="/coach/scan" component={ScanPage} />

@@ -101,6 +101,15 @@ export const attendance = pgTable("attendance", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const followUps = pgTable("follow_ups", {
+  id: serial("id").primaryKey(),
+  inquiryId: integer("inquiry_id").references(() => inquiries.id).notNull(),
+  notes: text("notes").notNull(),
+  nextFollowUpDate: text("next_follow_up_date"), // YYYY-MM-DD
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const fees = pgTable("fees", {
   id: serial("id").primaryKey(),
   studentId: integer("student_id").references(() => students.id).notNull(),
@@ -160,3 +169,4 @@ export type SessionNote    = typeof sessionNotes.$inferSelect;
 export type PlayerRating   = typeof playerRatings.$inferSelect;
 export type Fee            = typeof fees.$inferSelect;
 export type Notification   = typeof notifications.$inferSelect;
+export type FollowUp       = typeof followUps.$inferSelect;
