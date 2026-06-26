@@ -55,7 +55,10 @@ export default function Booking() {
           email:        sel.email || undefined,
         }),
       });
-      const data = await res.json();
+      const text = await res.text();
+      if (!text) throw new Error(`Server returned empty response (HTTP ${res.status})`);
+      let data: any;
+      try { data = JSON.parse(text); } catch { throw new Error(`Server error (${res.status}): ${text.substring(0, 200)}`); }
       if (!res.ok) throw new Error(data.error || "Booking failed");
       setBookingRef(data.ref);
       setDone(true);
