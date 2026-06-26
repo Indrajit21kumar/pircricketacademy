@@ -30,10 +30,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const db = drizzle(sql, { schema });
     result.dbInit = "ok";
 
-    // Step 6: can we run a query?
-    const rows = await (db as any).execute("SELECT 1 as n");
-    result.query = "ok";
-    result.queryResult = rows;
+    // Step 6: can we import jsonwebtoken?
+    const jwtMod = await import("jsonwebtoken");
+    result.jwtImport = "ok";
+
+    // Step 7: can we import bcryptjs?
+    const bcryptMod = await import("bcryptjs");
+    result.bcryptImport = "ok";
   } catch (e: any) {
     result.error = e.message;
     result.stack = e.stack?.split("\n").slice(0, 5).join(" | ");
