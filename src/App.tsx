@@ -7,6 +7,9 @@ import Admissions from "@/pages/Admissions";
 import Admin from "@/pages/Admin";
 import Student from "@/pages/Student";
 import NotFound from "@/pages/NotFound";
+import StudentsPage from "@/pages/admin/Students";
+import AttendancePage from "@/pages/admin/Attendance";
+import ScanPage from "@/pages/coach/Scan";
 
 const qc = new QueryClient();
 
@@ -19,6 +22,9 @@ export default function App() {
         <Route path="/booking" component={Booking} />
         <Route path="/admissions" component={Admissions} />
         <Route path="/admin" component={Admin} />
+        <Route path="/admin/students" component={StudentsPage} />
+        <Route path="/admin/attendance" component={AttendancePage} />
+        <Route path="/coach/scan" component={ScanPage} />
         <Route path="/student" component={Student} />
         <Route component={NotFound} />
       </Switch>

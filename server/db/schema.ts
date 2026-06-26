@@ -63,7 +63,48 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const batches = pgTable("batches", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  ageGroup: text("age_group").notNull(),
+  schedule: text("schedule").notNull(), // e.g. "Mon Wed Fri 6:00-8:00am"
+  coachName: text("coach_name").notNull(),
+  maxStudents: integer("max_students").default(25).notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const students = pgTable("students", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  dob: text("dob").notNull(),
+  ageGroup: text("age_group").notNull(),
+  batchId: integer("batch_id").references(() => batches.id),
+  parentName: text("parent_name").notNull(),
+  phone: text("phone").notNull(),
+  email: text("email"),
+  address: text("address"),
+  bloodGroup: text("blood_group"),
+  qrToken: text("qr_token").notNull().unique(), // unique token for QR code
+  status: text("status").default("active").notNull(), // active | inactive | trial
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const attendance = pgTable("attendance", {
+  id: serial("id").primaryKey(),
+  studentId: integer("student_id").references(() => students.id).notNull(),
+  batchId: integer("batch_id").references(() => batches.id),
+  sessionDate: text("session_date").notNull(), // YYYY-MM-DD
+  status: text("status").default("present").notNull(), // present | absent | late
+  markedBy: text("marked_by").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export type Inquiry    = typeof inquiries.$inferSelect;
 export type Admission  = typeof admissions.$inferSelect;
 export type Booking    = typeof bookings.$inferSelect;
 export type User       = typeof users.$inferSelect;
+export type Batch      = typeof batches.$inferSelect;
+export type Student    = typeof students.$inferSelect;
+export type Attendance = typeof attendance.$inferSelect;
