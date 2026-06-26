@@ -468,6 +468,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
   if (req.method === "OPTIONS") return res.status(200).end();
 
+  if (!process.env.DATABASE_URL) {
+    return res.status(500).json({ error: "DATABASE_URL is not configured on the server" });
+  }
+
   // _p is injected by vercel.json rewrite: /api/(.*)  →  /api/router?_p=$1
   // This is the most reliable way to get the original path on Vercel.
   const pParam = Array.isArray(req.query._p) ? req.query._p[0] : (req.query._p ?? "");
