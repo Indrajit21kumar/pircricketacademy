@@ -101,6 +101,26 @@ export const attendance = pgTable("attendance", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const messageTemplates = pgTable("message_templates", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  category: text("category").notNull(), // attendance | fees | general | trial | welcome
+  content: text("content").notNull(),   // supports {{childName}}, {{parentName}}, {{phone}}, {{batch}}, {{date}}
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const messageCampaigns = pgTable("message_campaigns", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  templateId: integer("template_id").references(() => messageTemplates.id),
+  audience: text("audience").notNull(),   // all | batch:<id> | active | trial | fee_due
+  message: text("message").notNull(),     // resolved message text
+  sentCount: integer("sent_count").default(0).notNull(),
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const followUps = pgTable("follow_ups", {
   id: serial("id").primaryKey(),
   inquiryId: integer("inquiry_id").references(() => inquiries.id).notNull(),
@@ -169,4 +189,6 @@ export type SessionNote    = typeof sessionNotes.$inferSelect;
 export type PlayerRating   = typeof playerRatings.$inferSelect;
 export type Fee            = typeof fees.$inferSelect;
 export type Notification   = typeof notifications.$inferSelect;
-export type FollowUp       = typeof followUps.$inferSelect;
+export type FollowUp          = typeof followUps.$inferSelect;
+export type MessageTemplate   = typeof messageTemplates.$inferSelect;
+export type MessageCampaign   = typeof messageCampaigns.$inferSelect;
