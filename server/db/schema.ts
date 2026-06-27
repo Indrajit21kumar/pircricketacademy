@@ -50,7 +50,9 @@ export const bookings = pgTable("bookings", {
   name: text("name").notNull(),
   phone: text("phone").notNull(),
   email: text("email"),
-  status: text("status").default("confirmed").notNull(), // confirmed | completed | cancelled
+  razorpayOrderId: text("razorpay_order_id"),
+  razorpayPaymentId: text("razorpay_payment_id"),
+  status: text("status").default("pending_payment").notNull(), // pending_payment | confirmed | completed | cancelled
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

@@ -1,8 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { Calendar, Clock, CheckCircle, ArrowLeft, ArrowRight } from "lucide-react";
+import { Calendar, Clock, CheckCircle, ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react";
+
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
 
 const FACILITIES = [
   { id:"box",    name:"Box Cricket Arena", emoji:"🏟️", pricing:{weekday:1500, weekend:1800, night:2200} },
@@ -21,6 +27,17 @@ function getRate(facility: typeof FACILITIES[0], slot: string, date: string) {
   return isWeekend ? facility.pricing.weekend : facility.pricing.weekday;
 }
 
+function loadRazorpayScript(): Promise<boolean> {
+  return new Promise(resolve => {
+    if (window.Razorpay) return resolve(true);
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
+
 export default function Booking() {
   const [step, setStep] = useState(1);
   const [sel, setSel] = useState({ facility:"", date:"", slot:"", duration:1, name:"", phone:"", email:"" });
@@ -29,41 +46,91 @@ export default function Booking() {
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState("");
 
+  useEffect(() => { loadRazorpayScript(); }, []);
+
   const facility = FACILITIES.find(f => f.id === sel.facility);
   const rate = facility ? getRate(facility, sel.slot, sel.date) : 0;
   const total = rate * sel.duration;
   const today = new Date().toISOString().split("T")[0];
 
-  const confirm = async () => {
+  const pay = async () => {
     if (!facility) return;
     setSubmitting(true);
     setServerError("");
+
     try {
+      // Step 1: Create booking + Razorpay order on server
       const res = await fetch("/api/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          facility:     sel.facility,
-          facilityName: facility.name,
-          date:         sel.date,
-          slot:         sel.slot,
-          duration:     sel.duration,
-          rate,
-          total,
-          name:         sel.name,
-          phone:        sel.phone,
-          email:        sel.email || undefined,
+          facility: sel.facility, facilityName: facility.name,
+          date: sel.date, slot: sel.slot,
+          duration: sel.duration, rate, total,
+          name: sel.name, phone: sel.phone,
+          email: sel.email || undefined,
         }),
       });
       const text = await res.text();
-      if (!text) throw new Error(`Server returned empty response (HTTP ${res.status})`);
-      let data: any;
-      try { data = JSON.parse(text); } catch { throw new Error(`Server error (${res.status}): ${text.substring(0, 200)}`); }
-      if (!res.ok) throw new Error(data.error || "Booking failed");
-      setBookingRef(data.ref);
-      setDone(true);
+      if (!text) throw new Error(`Empty response (HTTP ${res.status})`);
+      const data = JSON.parse(text);
+      if (!res.ok) throw new Error(data.error || "Failed to create order");
+
+      const { bookingId, orderId, amount, keyId } = data;
+
+      // Step 2: Load Razorpay if not already loaded
+      const loaded = await loadRazorpayScript();
+      if (!loaded) throw new Error("Could not load payment gateway. Please try again.");
+
+      // Step 3: Open Razorpay UPI checkout
+      await new Promise<void>((resolve, reject) => {
+        const rzp = new window.Razorpay({
+          key: keyId,
+          amount,
+          currency: "INR",
+          order_id: orderId,
+          name: "PIR Cricket Academy",
+          description: `${facility.name} · ${sel.date} · ${sel.slot}`,
+          image: "/logo.png",
+          prefill: { name: sel.name, contact: sel.phone, email: sel.email || "" },
+          config: {
+            display: {
+              blocks: { upi: { name: "Pay via UPI", instruments: [{ method: "upi" }] } },
+              sequence: ["block.upi"],
+              preferences: { show_default_blocks: false },
+            },
+          },
+          handler: async (response: any) => {
+            try {
+              // Step 4: Verify payment on server
+              const vRes = await fetch("/api/bookings/verify", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  bookingId,
+                  razorpayOrderId: response.razorpay_order_id,
+                  razorpayPaymentId: response.razorpay_payment_id,
+                  razorpaySignature: response.razorpay_signature,
+                }),
+              });
+              const vData = await vRes.json();
+              if (!vRes.ok) throw new Error(vData.error || "Payment verification failed");
+              setBookingRef(vData.ref);
+              setDone(true);
+              resolve();
+            } catch (e: any) {
+              reject(e);
+            }
+          },
+          modal: {
+            ondismiss: () => reject(new Error("Payment cancelled. Your slot is held for 10 minutes.")),
+          },
+          theme: { color: "#eab308" },
+        });
+        rzp.open();
+      });
     } catch (err: any) {
-      setServerError(err.message || "Booking failed. Please try again or call us.");
+      setServerError(err.message || "Payment failed. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -73,12 +140,16 @@ export default function Booking() {
     <div className="min-h-screen bg-background"><Navbar />
       <div className="pt-32 pb-20 container mx-auto px-4 max-w-md text-center">
         <motion.div initial={{opacity:0,scale:0.9}} animate={{opacity:1,scale:1}} className="bg-card border border-secondary/30 rounded-2xl p-12">
-          <div className="w-20 h-20 bg-secondary/10 border-2 border-secondary/30 rounded-full flex items-center justify-center mx-auto mb-6"><CheckCircle className="h-10 w-10 text-secondary"/></div>
+          <div className="w-20 h-20 bg-secondary/10 border-2 border-secondary/30 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CheckCircle className="h-10 w-10 text-secondary"/>
+          </div>
           <h2 className="font-display text-3xl font-bold mb-3">Booking Confirmed!</h2>
           <p className="text-muted-foreground mb-2">Booking reference: <strong className="text-secondary">{bookingRef}</strong></p>
           <p className="text-muted-foreground text-sm mb-1">{facility?.name} · {sel.date} · {sel.slot}</p>
           <p className="text-muted-foreground text-sm mb-6">{sel.duration} hour{sel.duration>1?"s":""} · ₹{total.toLocaleString()}</p>
-          <p className="text-sm text-muted-foreground">We will confirm via WhatsApp on <strong className="text-foreground">{sel.phone}</strong></p>
+          <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 text-sm text-green-400">
+            Payment received · We will WhatsApp you on <strong>{sel.phone}</strong>
+          </div>
         </motion.div>
       </div>
       <Footer />
@@ -93,13 +164,9 @@ export default function Booking() {
           <p className="text-muted-foreground text-lg">Box Cricket · Turf Wicket · Cement Wicket</p>
           <div className="flex justify-center gap-2 mt-6">
             {[1,2,3].map(s=>(
-              <button
-                key={s}
-                onClick={() => { if (step > s) setStep(s); }}
-                disabled={step < s}
+              <button key={s} onClick={() => { if (step > s) setStep(s); }} disabled={step < s}
                 className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-bold transition-all
-                  ${step===s ? "bg-secondary text-secondary-foreground" : step>s ? "bg-secondary/30 text-secondary cursor-pointer hover:bg-secondary/50" : "bg-card border border-border text-muted-foreground cursor-not-allowed"}`}
-              >
+                  ${step===s ? "bg-secondary text-secondary-foreground" : step>s ? "bg-secondary/30 text-secondary cursor-pointer hover:bg-secondary/50" : "bg-card border border-border text-muted-foreground cursor-not-allowed"}`}>
                 {s===1?"Facility":s===2?"Date & Time":"Details & Pay"}
               </button>
             ))}
@@ -187,10 +254,12 @@ export default function Booking() {
               </div>
             </div>
             {serverError && <p className="text-red-400 text-sm text-center bg-red-400/10 border border-red-400/20 rounded-lg p-3 mb-4">{serverError}</p>}
-            <button disabled={!sel.name||!sel.phone||submitting} onClick={confirm} className="w-full bg-secondary text-secondary-foreground font-bold uppercase py-4 rounded-xl hover:bg-secondary/90 transition-all shadow-[0_0_20px_rgba(234,179,8,0.25)] text-base disabled:opacity-40">
-              {submitting ? "Processing..." : `Confirm Booking — ₹${total.toLocaleString()}`}
+            <button disabled={!sel.name||!sel.phone||submitting} onClick={pay}
+              className="w-full bg-secondary text-secondary-foreground font-bold uppercase py-4 rounded-xl hover:bg-secondary/90 transition-all shadow-[0_0_20px_rgba(234,179,8,0.25)] text-base disabled:opacity-40 flex items-center justify-center gap-3">
+              <ShieldCheck className="h-5 w-5"/>
+              {submitting ? "Opening Payment..." : `Pay ₹${total.toLocaleString()} via UPI`}
             </button>
-            <p className="text-center text-muted-foreground text-xs mt-3">Instant confirmation · We will WhatsApp you the details</p>
+            <p className="text-center text-muted-foreground text-xs mt-3">Secure UPI payment · PhonePe · GPay · Paytm · 0% extra charges</p>
           </motion.div>
         )}
       </div>

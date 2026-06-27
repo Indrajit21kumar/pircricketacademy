@@ -112,12 +112,39 @@ async function handleAdmissions(req: VercelRequest, res: VercelResponse, sub: st
 
 // ── Bookings ───────────────────────────────────────────────────────────────────
 async function handleBookings(req: VercelRequest, res: VercelResponse, sub: string[]) {
-  const id = sub[0] ? parseInt(sub[0]) : null;
-  const action = sub[1];
+  const first = sub[0];
+  const id = first && first !== "verify" ? parseInt(first) : null;
+  const action = id ? sub[1] : first;
+
+  // GET /api/bookings?date=YYYY-MM-DD  — receptionist tracker
   if (req.method === "GET") {
-    const all = await db.select().from(bookings).orderBy(bookings.createdAt);
-    return res.json(all.reverse());
+    const { date } = req.query;
+    const all = date
+      ? await db.select().from(bookings).where(eq(bookings.date, date as string))
+      : await db.select().from(bookings).orderBy(bookings.createdAt);
+    return res.json(date ? all : all.reverse());
   }
+
+  // POST /api/bookings/verify  — confirm payment after Razorpay success
+  if (req.method === "POST" && action === "verify") {
+    const { bookingId, razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
+    const keySecret = process.env.RAZORPAY_KEY_SECRET || "";
+    const expected = crypto
+      .createHmac("sha256", keySecret)
+      .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+      .digest("hex");
+    if (expected !== razorpaySignature) {
+      return res.status(400).json({ error: "Payment verification failed — signature mismatch" });
+    }
+    const [row] = await db
+      .update(bookings)
+      .set({ status: "confirmed", razorpayPaymentId })
+      .where(eq(bookings.id, parseInt(bookingId)))
+      .returning();
+    return res.json({ ref: row.ref, status: row.status });
+  }
+
+  // POST /api/bookings  — create booking + Razorpay order
   if (req.method === "POST") {
     const data = z.object({
       facility: z.string().min(1), facilityName: z.string().min(1),
@@ -126,14 +153,42 @@ async function handleBookings(req: VercelRequest, res: VercelResponse, sub: stri
       total: z.number().int().positive(), name: z.string().min(1),
       phone: z.string().min(1), email: z.string().optional(),
     }).parse(req.body);
-    const ref = "PIR" + Date.now().toString(36).toUpperCase();
-    const [row] = await db.insert(bookings).values({ ...data, ref }).returning();
-    return res.status(201).json(row);
+
+    const ref = "PIR" + crypto.randomBytes(4).toString("hex").toUpperCase();
+    const keyId = process.env.RAZORPAY_KEY_ID || "";
+    const keySecret = process.env.RAZORPAY_KEY_SECRET || "";
+
+    if (!keyId || !keySecret) {
+      return res.status(500).json({ error: "Razorpay keys not configured" });
+    }
+
+    const auth = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
+    const orderRes = await fetch("https://api.razorpay.com/v1/orders", {
+      method: "POST",
+      headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ amount: data.total * 100, currency: "INR", receipt: ref }),
+    });
+    if (!orderRes.ok) {
+      const err = await orderRes.text();
+      return res.status(500).json({ error: "Failed to create payment order", detail: err });
+    }
+    const order = await (orderRes.json() as Promise<{ id: string }>);
+
+    const [row] = await db.insert(bookings).values({
+      ...data, ref,
+      razorpayOrderId: order.id,
+      status: "pending_payment",
+    }).returning();
+
+    return res.status(201).json({ bookingId: row.id, orderId: order.id, amount: data.total * 100, keyId, ref });
   }
+
+  // PATCH /api/bookings/:id/status
   if (req.method === "PATCH" && id && action === "status") {
     const [row] = await db.update(bookings).set({ status: req.body.status }).where(eq(bookings.id, id)).returning();
     return res.json(row);
   }
+
   return res.status(405).json({ error: "Method not allowed" });
 }
 

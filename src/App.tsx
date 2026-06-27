@@ -11,6 +11,7 @@ import StudentsPage from "@/pages/admin/Students";
 import CRMPage from "@/pages/admin/CRM";
 import CommsPage from "@/pages/admin/Comms";
 import CalendarPage from "@/pages/admin/Calendar";
+import GroundTracker from "@/pages/admin/GroundTracker";
 import AttendancePage from "@/pages/admin/Attendance";
 import ScanPage from "@/pages/coach/Scan";
 import CoachPortal from "@/pages/coach/Portal";
@@ -32,6 +33,7 @@ export default function App() {
         <Route path="/admin/comms" component={CommsPage} />
         <Route path="/admin/attendance" component={AttendancePage} />
         <Route path="/admin/calendar" component={CalendarPage} />
+        <Route path="/admin/ground-tracker" component={GroundTracker} />
         <Route path="/coach" component={CoachPortal} />
         <Route path="/coach/scan" component={ScanPage} />
         <Route path="/parent" component={ParentPortal} />
