@@ -1,10 +1,10 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { db } from "./_db";
+import { db } from "./_db.js";
 import {
   inquiries, admissions, bookings, users, batches, students,
   attendance, messageTemplates, messageCampaigns, followUps, fees,
   notifications, sessionNotes, playerRatings, events,
-} from "../server/db/schema";
+} from "../server/db/schema.js";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import crypto from "crypto";

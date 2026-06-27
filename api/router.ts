@@ -4,7 +4,7 @@ import {
   handleBookings, handleBatches, handleStudents, handleAttendance,
   handleSessionNotes, handlePlayerRatings, handleFees, handleNotifications,
   handleParent, handleTemplates, handleCampaigns, handleEvents,
-} from "./_handlers";
+} from "./_handlers.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader("Access-Control-Allow-Origin", "*");
