@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { Calendar, Clock, CheckCircle, ArrowLeft, ArrowRight, ShieldCheck } from "lucide-react";
+import { Calendar, Clock, CheckCircle, ArrowLeft, ArrowRight, ShieldCheck, XCircle } from "lucide-react";
 
 declare global {
   interface Window {
@@ -45,8 +45,19 @@ export default function Booking() {
   const [bookingRef, setBookingRef] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState("");
+  const [bookedSlots, setBookedSlots] = useState<string[]>([]);
+  const [slotPopup, setSlotPopup] = useState("");
 
   useEffect(() => { loadRazorpayScript(); }, []);
+
+  const fetchBookedSlots = useCallback(async (facility: string, date: string) => {
+    if (!facility || !date) return;
+    try {
+      const res = await fetch(`/api/bookings/slots?date=${date}&facility=${facility}`);
+      const data = await res.json();
+      setBookedSlots(data.bookedSlots || []);
+    } catch { setBookedSlots([]); }
+  }, []);
 
   const facility = FACILITIES.find(f => f.id === sel.facility);
   const rate = facility ? getRate(facility, sel.slot, sel.date) : 0;
@@ -180,7 +191,7 @@ export default function Booking() {
             <h2 className="font-display text-2xl font-bold mb-6">Select Facility</h2>
             <div className="space-y-4">
               {FACILITIES.map(f=>(
-                <button key={f.id} onClick={()=>{setSel({...sel,facility:f.id});setStep(2);}}
+                <button key={f.id} onClick={()=>{setSel({...sel,facility:f.id,slot:""});setBookedSlots([]);setStep(2);}}
                   className={`w-full bg-card border rounded-2xl p-6 text-left flex items-center gap-5 hover:border-secondary/50 transition-all ${sel.facility===f.id?"border-secondary":"border-border"}`}>
                   <span className="text-4xl">{f.emoji}</span>
                   <div className="flex-1">
@@ -204,12 +215,28 @@ export default function Booking() {
             <h2 className="font-display text-2xl font-bold mb-6">Select Date & Time</h2>
             <div className="bg-card border border-border rounded-2xl p-6 space-y-5">
               <div><label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2"><Calendar className="h-4 w-4 inline mr-1.5"/>Date</label>
-                <input type="date" min={today} value={sel.date} onChange={e=>setSel({...sel,date:e.target.value})} className="w-full bg-background border border-border rounded-lg px-4 py-3 text-foreground text-sm focus:outline-none focus:border-secondary transition-colors"/></div>
+                <input type="date" min={today} value={sel.date} onChange={e=>{setSel({...sel,date:e.target.value,slot:""});fetchBookedSlots(sel.facility,e.target.value);}} className="w-full bg-background border border-border rounded-lg px-4 py-3 text-foreground text-sm focus:outline-none focus:border-secondary transition-colors"/></div>
               <div><label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2"><Clock className="h-4 w-4 inline mr-1.5"/>Time Slot</label>
                 <div className="grid grid-cols-3 gap-2">
-                  {SLOTS.map(s=>(
-                    <button key={s} onClick={()=>setSel({...sel,slot:s})} className={`py-2.5 rounded-lg text-sm font-semibold border transition-all ${sel.slot===s?"bg-secondary text-secondary-foreground border-secondary":"bg-background border-border hover:border-secondary/40"}`}>{s}</button>
-                  ))}
+                  {SLOTS.map(s=>{
+                    const isBooked = bookedSlots.includes(s);
+                    return (
+                      <button key={s}
+                        onClick={()=>{
+                          if(isBooked){setSlotPopup(s);return;}
+                          setSel({...sel,slot:s});
+                        }}
+                        className={`py-2.5 rounded-lg text-sm font-semibold border transition-all relative
+                          ${isBooked
+                            ? "bg-red-500/10 border-red-500/30 text-red-400 cursor-not-allowed"
+                            : sel.slot===s
+                              ? "bg-secondary text-secondary-foreground border-secondary"
+                              : "bg-background border-border hover:border-secondary/40"}`}>
+                        {s}
+                        {isBooked && <span className="block text-[10px] font-normal mt-0.5">Booked</span>}
+                      </button>
+                    );
+                  })}
                 </div></div>
               <div><label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">Duration</label>
                 <div className="flex gap-3">
@@ -264,6 +291,30 @@ export default function Booking() {
         )}
       </div>
       <Footer />
+
+      {/* Slot already booked popup */}
+      <AnimatePresence>
+        {slotPopup && (
+          <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
+            className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4"
+            onClick={()=>setSlotPopup("")}>
+            <motion.div initial={{scale:0.9,opacity:0}} animate={{scale:1,opacity:1}} exit={{scale:0.9,opacity:0}}
+              className="bg-card border border-red-500/30 rounded-2xl p-8 max-w-sm w-full text-center"
+              onClick={e=>e.stopPropagation()}>
+              <div className="w-14 h-14 bg-red-500/10 border border-red-500/30 rounded-full flex items-center justify-center mx-auto mb-4">
+                <XCircle className="h-7 w-7 text-red-400"/>
+              </div>
+              <h3 className="font-display text-xl font-bold mb-2">Slot Already Booked</h3>
+              <p className="text-muted-foreground text-sm mb-1">The <strong className="text-foreground">{slotPopup}</strong> slot is already taken for this facility on this date.</p>
+              <p className="text-muted-foreground text-sm mb-6">Please select a different time slot.</p>
+              <button onClick={()=>setSlotPopup("")}
+                className="w-full bg-secondary text-secondary-foreground font-bold py-3 rounded-xl hover:bg-secondary/90 transition-all">
+                Choose Another Slot
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

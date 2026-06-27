@@ -111,10 +111,104 @@ async function handleAdmissions(req: VercelRequest, res: VercelResponse, sub: st
 }
 
 // ── Bookings ───────────────────────────────────────────────────────────────────
+// All time slots in order — used for duration overlap calculation
+const ALL_SLOTS = ["06:00 AM","07:00 AM","08:00 AM","09:00 AM","04:00 PM","05:00 PM","06:00 PM","07:00 PM","08:00 PM"];
+
+function getOccupiedSlots(startSlot: string, duration: number): string[] {
+  const idx = ALL_SLOTS.indexOf(startSlot);
+  if (idx === -1) return [startSlot];
+  return ALL_SLOTS.slice(idx, idx + duration);
+}
+
+async function sendEmail(to: string, subject: string, html: string) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return;
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: "PIR Cricket Academy <bookings@pircricketacademy.co.in>", to, subject, html }),
+  });
+}
+
+async function sendWhatsApp(to: string, message: string) {
+  const sid = process.env.TWILIO_ACCOUNT_SID;
+  const token = process.env.TWILIO_AUTH_TOKEN;
+  const from = process.env.TWILIO_WHATSAPP_FROM || "whatsapp:+14155238886";
+  if (!sid || !token) return;
+  const phone = to.startsWith("+") ? to : `+91${to.replace(/\D/g, "").slice(-10)}`;
+  await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${sid}:${token}`).toString("base64")}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({
+      From: from,
+      To: `whatsapp:${phone}`,
+      Body: message,
+    }).toString(),
+  });
+}
+
+async function sendBookingNotifications(booking: {
+  ref: string; name: string; phone: string; email?: string | null;
+  facilityName: string; date: string; slot: string; duration: number; total: number;
+}) {
+  const { ref, name, phone, email, facilityName, date, slot, duration, total } = booking;
+  const adminPhone = process.env.ADMIN_PHONE || "7903053204";
+  const adminEmail = process.env.ADMIN_EMAIL || "kumarindrajitcricket@gmail.com";
+
+  const customerMsg = `✅ *Booking Confirmed!*\n\nHi ${name}, your booking at PIR Cricket Academy is confirmed.\n\n🏟️ *Facility:* ${facilityName}\n📅 *Date:* ${date}\n⏰ *Time:* ${slot}\n⏱️ *Duration:* ${duration} hour${duration > 1 ? "s" : ""}\n💰 *Amount Paid:* ₹${total.toLocaleString()}\n🎫 *Ref:* ${ref}\n\nSee you on the ground! 🏏\n- PIR Cricket Academy`;
+
+  const adminMsg = `🔔 *New Booking Alert!*\n\n👤 *Customer:* ${name}\n📞 *Phone:* ${phone}\n🏟️ *Facility:* ${facilityName}\n📅 *Date:* ${date}\n⏰ *Time:* ${slot}\n⏱️ *Duration:* ${duration} hour${duration > 1 ? "s" : ""}\n💰 *Amount:* ₹${total.toLocaleString()}\n🎫 *Ref:* ${ref}`;
+
+  const customerEmailHtml = `
+    <div style="font-family:sans-serif;max-width:500px;margin:0 auto;background:#0a0f1e;color:#fff;border-radius:12px;overflow:hidden">
+      <div style="background:#eab308;padding:24px;text-align:center">
+        <h1 style="margin:0;color:#000;font-size:22px">PIR Cricket Academy</h1>
+        <p style="margin:4px 0 0;color:#000;font-size:14px">Booking Confirmed ✅</p>
+      </div>
+      <div style="padding:28px">
+        <p style="color:#94a3b8;margin:0 0 20px">Hi <strong style="color:#fff">${name}</strong>, your facility booking is confirmed and payment received.</p>
+        <table style="width:100%;border-collapse:collapse">
+          ${[["Booking Ref", ref],["Facility", facilityName],["Date", date],["Time", slot],["Duration", `${duration} hour${duration>1?"s":""}`],["Amount Paid", `₹${total.toLocaleString()}`]].map(([k,v])=>`<tr><td style="padding:8px 0;color:#94a3b8;border-bottom:1px solid #1e293b;font-size:14px">${k}</td><td style="padding:8px 0;color:#fff;border-bottom:1px solid #1e293b;font-size:14px;font-weight:bold;text-align:right">${v}</td></tr>`).join("")}
+        </table>
+        <p style="color:#94a3b8;margin:24px 0 0;font-size:13px">For any queries, WhatsApp us at +91 ${adminPhone}</p>
+      </div>
+    </div>`;
+
+  const adminEmailHtml = `
+    <div style="font-family:sans-serif;max-width:500px;margin:0 auto">
+      <h2 style="color:#eab308">🔔 New Booking — PIR Cricket Academy</h2>
+      <table style="width:100%;border-collapse:collapse">
+        ${[["Customer", name],["Phone", phone],["Email", email||"—"],["Facility", facilityName],["Date", date],["Time", slot],["Duration", `${duration}hr`],["Amount", `₹${total.toLocaleString()}`],["Ref", ref]].map(([k,v])=>`<tr><td style="padding:6px 12px 6px 0;color:#666;font-size:14px">${k}</td><td style="padding:6px 0;font-weight:bold;font-size:14px">${v}</td></tr>`).join("")}
+      </table>
+    </div>`;
+
+  await Promise.allSettled([
+    sendWhatsApp(phone, customerMsg),
+    sendWhatsApp(adminPhone, adminMsg),
+    email ? sendEmail(email, `Booking Confirmed — ${ref} | PIR Cricket Academy`, customerEmailHtml) : Promise.resolve(),
+    sendEmail(adminEmail, `New Booking: ${name} — ${facilityName} on ${date}`, adminEmailHtml),
+  ]);
+}
+
 async function handleBookings(req: VercelRequest, res: VercelResponse, sub: string[]) {
   const first = sub[0];
-  const id = first && first !== "verify" ? parseInt(first) : null;
+  const id = first && first !== "verify" && first !== "slots" ? parseInt(first) : null;
   const action = id ? sub[1] : first;
+
+  // GET /api/bookings/slots?date=&facility=  — slot availability for frontend
+  if (req.method === "GET" && action === "slots") {
+    const { date, facility } = req.query;
+    if (!date || !facility) return res.status(400).json({ error: "date and facility required" });
+    const existing = await db.select().from(bookings)
+      .where(eq(bookings.date, date as string));
+    const confirmed = existing.filter(b => b.facility === facility && b.status === "confirmed");
+    const bookedSlots = new Set<string>();
+    confirmed.forEach(b => getOccupiedSlots(b.slot, b.duration).forEach(s => bookedSlots.add(s)));
+    return res.json({ bookedSlots: Array.from(bookedSlots) });
+  }
 
   // GET /api/bookings?date=YYYY-MM-DD  — receptionist tracker
   if (req.method === "GET") {
@@ -125,7 +219,7 @@ async function handleBookings(req: VercelRequest, res: VercelResponse, sub: stri
     return res.json(date ? all : all.reverse());
   }
 
-  // POST /api/bookings/verify  — confirm payment after Razorpay success
+  // POST /api/bookings/verify  — confirm payment + send notifications
   if (req.method === "POST" && action === "verify") {
     const { bookingId, razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
     const keySecret = process.env.RAZORPAY_KEY_SECRET || "";
@@ -141,10 +235,14 @@ async function handleBookings(req: VercelRequest, res: VercelResponse, sub: stri
       .set({ status: "confirmed", razorpayPaymentId })
       .where(eq(bookings.id, parseInt(bookingId)))
       .returning();
+
+    // Send notifications async (don't block response)
+    sendBookingNotifications(row).catch(() => {});
+
     return res.json({ ref: row.ref, status: row.status });
   }
 
-  // POST /api/bookings  — create booking + Razorpay order
+  // POST /api/bookings  — check availability + create booking + Razorpay order
   if (req.method === "POST") {
     const data = z.object({
       facility: z.string().min(1), facilityName: z.string().min(1),
@@ -154,13 +252,23 @@ async function handleBookings(req: VercelRequest, res: VercelResponse, sub: stri
       phone: z.string().min(1), email: z.string().optional(),
     }).parse(req.body);
 
+    // Server-side slot conflict check
+    const existing = await db.select().from(bookings)
+      .where(eq(bookings.date, data.date));
+    const confirmedForFacility = existing.filter(b => b.facility === data.facility && b.status === "confirmed");
+    const requestedSlots = getOccupiedSlots(data.slot, data.duration);
+    for (const b of confirmedForFacility) {
+      const occupied = getOccupiedSlots(b.slot, b.duration);
+      const conflict = requestedSlots.some(s => occupied.includes(s));
+      if (conflict) {
+        return res.status(409).json({ error: `This slot is already booked. Please choose a different time.`, conflictRef: b.ref });
+      }
+    }
+
     const ref = "PIR" + crypto.randomBytes(4).toString("hex").toUpperCase();
     const keyId = process.env.RAZORPAY_KEY_ID || "";
     const keySecret = process.env.RAZORPAY_KEY_SECRET || "";
-
-    if (!keyId || !keySecret) {
-      return res.status(500).json({ error: "Razorpay keys not configured" });
-    }
+    if (!keyId || !keySecret) return res.status(500).json({ error: "Razorpay keys not configured" });
 
     const auth = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
     const orderRes = await fetch("https://api.razorpay.com/v1/orders", {
@@ -173,11 +281,8 @@ async function handleBookings(req: VercelRequest, res: VercelResponse, sub: stri
       return res.status(500).json({ error: "Failed to create payment order", detail: err });
     }
     const order = await (orderRes.json() as Promise<{ id: string }>);
-
     const [row] = await db.insert(bookings).values({
-      ...data, ref,
-      razorpayOrderId: order.id,
-      status: "pending_payment",
+      ...data, ref, razorpayOrderId: order.id, status: "pending_payment",
     }).returning();
 
     return res.status(201).json({ bookingId: row.id, orderId: order.id, amount: data.total * 100, keyId, ref });
