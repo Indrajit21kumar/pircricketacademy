@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
-import { Users, TrendingUp, DollarSign, AlertCircle, Activity, BarChart3, Calendar, CheckCircle, Clock, X, RefreshCw, ExternalLink, Phone, XCircle } from "lucide-react";
-import GroundTrackerEmbed from "./admin/GroundTracker";
+import { Users, TrendingUp, DollarSign, Activity, BarChart3, Calendar, X, RefreshCw, ExternalLink } from "lucide-react";
+import { GroundTrackerContent } from "./admin/GroundTracker";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface Admission { id:number; studentName:string; ageGroup:string; parentName:string; phone:string; createdAt:string; status:string; isTrial:boolean; }
@@ -297,7 +297,11 @@ export default function Admin() {
         {/* Ground Tracker */}
         {tab==="Ground Tracker" && (
           <motion.div initial={{opacity:0}} animate={{opacity:1}}>
-            <GroundTrackerEmbed />
+            <div className="mb-6">
+              <h2 className="font-display text-3xl font-bold">Ground Tracker</h2>
+              <p className="text-muted-foreground">Live slot availability — all facilities</p>
+            </div>
+            <GroundTrackerContent />
           </motion.div>
         )}
 
