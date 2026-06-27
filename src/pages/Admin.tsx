@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
-import { Users, TrendingUp, DollarSign, AlertCircle, Activity, BarChart3, Calendar, CheckCircle, Clock, X, RefreshCw, ExternalLink } from "lucide-react";
+import { Users, TrendingUp, DollarSign, AlertCircle, Activity, BarChart3, Calendar, CheckCircle, Clock, X, RefreshCw, ExternalLink, Phone, XCircle } from "lucide-react";
+import GroundTrackerEmbed from "./admin/GroundTracker";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface Admission { id:number; studentName:string; ageGroup:string; parentName:string; phone:string; createdAt:string; status:string; isTrial:boolean; }
@@ -24,7 +25,7 @@ async function apiFetch(path: string, opts: RequestInit = {}) {
   return res;
 }
 
-const TABS = ["Dashboard","Inquiries","Admissions","Bookings"];
+const TABS = ["Dashboard","Ground Tracker","Inquiries","Admissions","Bookings"];
 
 const MODULES = [
   { label: "Students & QR",   href: "/admin/students",        color: "text-blue-400",   bg: "bg-blue-400/10" },
@@ -290,6 +291,13 @@ export default function Admin() {
                 }
               </div>
             </div>
+          </motion.div>
+        )}
+
+        {/* Ground Tracker */}
+        {tab==="Ground Tracker" && (
+          <motion.div initial={{opacity:0}} animate={{opacity:1}}>
+            <GroundTrackerEmbed />
           </motion.div>
         )}
 

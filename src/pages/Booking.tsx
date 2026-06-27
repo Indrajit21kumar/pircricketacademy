@@ -15,7 +15,7 @@ const FACILITIES = [
   { id:"turf",   name:"Turf Wicket",       emoji:"🏏", pricing:{weekday:800,  weekend:1000, night:null} },
   { id:"cement", name:"Cement Wicket",     emoji:"⚡", pricing:{weekday:500,  weekend:700,  night:null} },
 ];
-const SLOTS = ["06:00 AM","07:00 AM","08:00 AM","09:00 AM","04:00 PM","05:00 PM","06:00 PM","07:00 PM","08:00 PM"];
+const SLOTS = ["06:00 AM","07:00 AM","08:00 AM","09:00 AM","10:00 AM","11:00 AM","12:00 PM","01:00 PM","02:00 PM","03:00 PM","04:00 PM","05:00 PM","06:00 PM","07:00 PM","08:00 PM","09:00 PM"];
 const DURATIONS = [1,2,3];
 
 function getRate(facility: typeof FACILITIES[0], slot: string, date: string) {
@@ -159,7 +159,7 @@ export default function Booking() {
           <p className="text-muted-foreground text-sm mb-1">{facility?.name} · {sel.date} · {sel.slot}</p>
           <p className="text-muted-foreground text-sm mb-6">{sel.duration} hour{sel.duration>1?"s":""} · ₹{total.toLocaleString()}</p>
           <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 text-sm text-green-400">
-            Payment received · We will WhatsApp you on <strong>{sel.phone}</strong>
+            Payment received · Confirmation email sent to <strong>{sel.email}</strong>
           </div>
         </motion.div>
       </div>
@@ -217,7 +217,7 @@ export default function Booking() {
               <div><label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2"><Calendar className="h-4 w-4 inline mr-1.5"/>Date</label>
                 <input type="date" min={today} value={sel.date} onChange={e=>{setSel({...sel,date:e.target.value,slot:""});fetchBookedSlots(sel.facility,e.target.value);}} className="w-full bg-background border border-border rounded-lg px-4 py-3 text-foreground text-sm focus:outline-none focus:border-secondary transition-colors"/></div>
               <div><label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2"><Clock className="h-4 w-4 inline mr-1.5"/>Time Slot</label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-4 gap-2">
                   {SLOTS.map(s=>{
                     const isBooked = bookedSlots.includes(s);
                     return (
@@ -286,7 +286,7 @@ export default function Booking() {
               <ShieldCheck className="h-5 w-5"/>
               {submitting ? "Opening Payment..." : `Pay ₹${total.toLocaleString()} via UPI`}
             </button>
-            <p className="text-center text-muted-foreground text-xs mt-3">Secure UPI payment · PhonePe · GPay · Paytm · 0% extra charges</p>
+            <p className="text-center text-muted-foreground text-xs mt-3">Secure UPI payment · PhonePe · GPay · Paytm · 0% extra charges · Confirmation email sent instantly</p>
           </motion.div>
         )}
       </div>
