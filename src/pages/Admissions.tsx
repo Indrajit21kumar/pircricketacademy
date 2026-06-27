@@ -133,7 +133,7 @@ export default function Admissions() {
                 <div><label className="label">Phone Number *</label><input required value={form.phone} onChange={e=>f("phone",e.target.value)} className="inp" placeholder="+91 98765 43210"/></div>
               </div>
               <div className="grid sm:grid-cols-2 gap-4">
-                <div><label className="label">Email Address</label><input type="email" value={form.email} onChange={e=>f("email",e.target.value)} className="inp" placeholder="ramesh@email.com"/></div>
+                <div><label className="label">Email Address *</label><input required type="email" value={form.email} onChange={e=>f("email",e.target.value)} className="inp" placeholder="ramesh@email.com"/></div>
                 <div><label className="label">Address</label><input value={form.address} onChange={e=>f("address",e.target.value)} className="inp" placeholder="Patna, Bihar"/></div>
               </div>
             </div>
@@ -156,7 +156,7 @@ export default function Admissions() {
                 <div><label className="label">Emergency Contact Phone *</label><input required value={form.emergencyPhone} onChange={e=>f("emergencyPhone",e.target.value)} className="inp" placeholder="+91 99999 99999"/></div>
               </div>
             </div>
-            <button type="button" onClick={()=>setStep(3)} disabled={!form.parentName||!form.phone||!form.emergencyName||!form.emergencyPhone} className="w-full bg-secondary text-secondary-foreground font-bold uppercase py-4 rounded-xl hover:bg-secondary/90 transition-all disabled:opacity-40 flex items-center justify-center gap-2">
+            <button type="button" onClick={()=>setStep(3)} disabled={!form.parentName||!form.phone||!form.email||!form.emergencyName||!form.emergencyPhone} className="w-full bg-secondary text-secondary-foreground font-bold uppercase py-4 rounded-xl hover:bg-secondary/90 transition-all disabled:opacity-40 flex items-center justify-center gap-2">
               Continue <ArrowRight className="h-5 w-5"/>
             </button>
           </motion.div>

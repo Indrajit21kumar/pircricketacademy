@@ -27,11 +27,12 @@ async function apiFetch(path: string, opts: RequestInit = {}) {
 const TABS = ["Dashboard","Inquiries","Admissions","Bookings"];
 
 const MODULES = [
-  { label: "Students & QR",  href: "/admin/students",  color: "text-blue-400",   bg: "bg-blue-400/10" },
-  { label: "Attendance",     href: "/admin/attendance", color: "text-green-400",  bg: "bg-green-400/10" },
-  { label: "Lead CRM",       href: "/admin/crm",        color: "text-orange-400", bg: "bg-orange-400/10" },
-  { label: "Communications", href: "/admin/comms",      color: "text-purple-400", bg: "bg-purple-400/10" },
-  { label: "Calendar",       href: "/admin/calendar",   color: "text-secondary",  bg: "bg-secondary/10" },
+  { label: "Students & QR",   href: "/admin/students",        color: "text-blue-400",   bg: "bg-blue-400/10" },
+  { label: "Attendance",      href: "/admin/attendance",      color: "text-green-400",  bg: "bg-green-400/10" },
+  { label: "Lead CRM",        href: "/admin/crm",             color: "text-orange-400", bg: "bg-orange-400/10" },
+  { label: "Communications",  href: "/admin/comms",           color: "text-purple-400", bg: "bg-purple-400/10" },
+  { label: "Calendar",        href: "/admin/calendar",        color: "text-secondary",  bg: "bg-secondary/10" },
+  { label: "Ground Tracker",  href: "/admin/ground-tracker",  color: "text-teal-400",   bg: "bg-teal-400/10" },
 ];
 
 // ── Status pill ───────────────────────────────────────────────────────────────
@@ -219,6 +220,42 @@ export default function Admin() {
               </div>
             </div>
 
+            {/* Today's Bookings — prominent panel */}
+            {(() => {
+              const todayStr = new Date().toISOString().split("T")[0];
+              const todayBookings = bookings.filter(b => b.date === todayStr && b.status === "confirmed");
+              const todayRevenue = todayBookings.reduce((s,b) => s + b.total, 0);
+              return (
+                <div className="mb-6 bg-secondary/5 border border-secondary/30 rounded-2xl p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="font-display text-lg font-bold text-secondary">Today's Ground Bookings</h3>
+                      <p className="text-xs text-muted-foreground">{todayStr} · {todayBookings.length} booking{todayBookings.length!==1?"s":""} · ₹{todayRevenue.toLocaleString()} confirmed</p>
+                    </div>
+                    <Link href="/admin/ground-tracker" className="text-xs text-secondary border border-secondary/30 rounded-lg px-3 py-1.5 hover:bg-secondary/10 transition-colors flex items-center gap-1">
+                      Full Tracker <ExternalLink className="h-3 w-3"/>
+                    </Link>
+                  </div>
+                  {todayBookings.length === 0 ? (
+                    <p className="text-muted-foreground text-sm">No confirmed bookings today.</p>
+                  ) : (
+                    <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
+                      {todayBookings.map(b=>(
+                        <div key={b.id} className="bg-card border border-secondary/20 rounded-xl p-4">
+                          <div className="flex items-start justify-between gap-2 mb-1">
+                            <p className="font-bold text-sm">{b.name}</p>
+                            <span className="text-secondary font-bold text-sm shrink-0">₹{b.total.toLocaleString()}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground">{b.facilityName}</p>
+                          <p className="text-xs text-muted-foreground">{b.slot} · {b.ref}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
             <div className="grid md:grid-cols-2 gap-6">
               <div className="bg-card border border-border rounded-2xl p-6">
                 <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground mb-4">Recent Applications</h3>
@@ -234,13 +271,19 @@ export default function Admin() {
                 }
               </div>
               <div className="bg-card border border-border rounded-2xl p-6">
-                <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground mb-4">Recent Bookings</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground">All Bookings</h3>
+                  <span className="text-xs text-muted-foreground">{bookings.filter(b=>b.status==="confirmed").length} confirmed</span>
+                </div>
                 {bookings.length === 0 ? <p className="text-muted-foreground text-sm">No bookings yet.</p> :
                   <div className="space-y-3">
-                    {bookings.slice(0,5).map(b=>(
+                    {bookings.filter(b=>b.status==="confirmed").slice(0,6).map(b=>(
                       <div key={b.id} className="flex items-center justify-between">
-                        <div><p className="font-semibold text-sm">{b.facilityName}</p><p className="text-xs text-muted-foreground">{b.date} · {b.slot} · {b.name}</p></div>
-                        <span className="text-secondary font-bold text-sm">₹{b.total.toLocaleString()}</span>
+                        <div>
+                          <p className="font-semibold text-sm">{b.name} <span className="text-xs text-muted-foreground font-normal">· {b.facilityName}</span></p>
+                          <p className="text-xs text-muted-foreground">{b.date} · {b.slot} · <span className="font-mono">{b.ref}</span></p>
+                        </div>
+                        <span className="text-secondary font-bold text-sm shrink-0">₹{b.total.toLocaleString()}</span>
                       </div>
                     ))}
                   </div>

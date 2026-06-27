@@ -93,7 +93,7 @@ async function handleAdmissions(req: VercelRequest, res: VercelResponse, sub: st
     const data = z.object({
       studentName: z.string().min(1), dob: z.string().min(1), ageGroup: z.string().min(1),
       school: z.string().optional(), parentName: z.string().min(1), phone: z.string().min(1),
-      email: z.string().optional(), address: z.string().optional(),
+      email: z.string().email(), address: z.string().optional(),
       bloodGroup: z.string().optional(), allergies: z.string().optional(),
       asthma: z.boolean().default(false), medicalNotes: z.string().optional(),
       emergencyName: z.string().min(1), emergencyPhone: z.string().min(1),
@@ -101,6 +101,45 @@ async function handleAdmissions(req: VercelRequest, res: VercelResponse, sub: st
       message: z.string().optional(), source: z.string().optional(),
     }).parse(req.body);
     const [row] = await db.insert(admissions).values(data).returning();
+
+    // Send notifications
+    const adminEmail = process.env.ADMIN_EMAIL || "kumarindrajitcricket@gmail.com";
+    const adminPhone = process.env.ADMIN_PHONE || "7903053204";
+    const type = data.isTrial ? "Free Trial Session" : "Admission Application";
+
+    const customerHtml = `
+      <div style="font-family:sans-serif;max-width:500px;margin:0 auto;background:#0a0f1e;color:#fff;border-radius:12px;overflow:hidden">
+        <div style="background:#eab308;padding:24px;text-align:center">
+          <h1 style="margin:0;color:#000;font-size:22px">PIR Cricket Academy</h1>
+          <p style="margin:4px 0 0;color:#000;font-size:14px">Application Received ✅</p>
+        </div>
+        <div style="padding:28px">
+          <p style="color:#94a3b8;margin:0 0 20px">Dear <strong style="color:#fff">${data.parentName}</strong>, we have received ${data.studentName}'s ${type}.</p>
+          <table style="width:100%;border-collapse:collapse">
+            ${[["Student",data.studentName],["Age Group",data.ageGroup],["Type",type],["Trial Date",data.trialDate||"—"],["Status","Under Review"]].map(([k,v])=>`<tr><td style="padding:8px 0;color:#94a3b8;border-bottom:1px solid #1e293b;font-size:14px">${k}</td><td style="padding:8px 0;color:#fff;border-bottom:1px solid #1e293b;font-size:14px;font-weight:bold;text-align:right">${v}</td></tr>`).join("")}
+          </table>
+          <p style="color:#94a3b8;margin:24px 0 0;font-size:13px">We will contact you on <strong style="color:#fff">${data.phone}</strong> within 24 hours. For queries, WhatsApp us at +91 ${adminPhone}</p>
+        </div>
+      </div>`;
+
+    const adminHtml = `
+      <div style="font-family:sans-serif;max-width:500px;margin:0 auto">
+        <h2 style="color:#eab308">🏏 New ${type} — PIR Cricket Academy</h2>
+        <table style="width:100%;border-collapse:collapse">
+          ${[["Student",data.studentName],["DOB",data.dob],["Age Group",data.ageGroup],["School",data.school||"—"],["Parent",data.parentName],["Phone",data.phone],["Email",data.email],["Address",data.address||"—"],["Trial",data.isTrial?"Yes — "+( data.trialDate||"date TBD"):"No"],["Asthma",data.asthma?"Yes":"No"],["Emergency",data.emergencyName+" / "+data.emergencyPhone]].map(([k,v])=>`<tr><td style="padding:6px 12px 6px 0;color:#666;font-size:14px">${k}</td><td style="padding:6px 0;font-weight:bold;font-size:14px">${v}</td></tr>`).join("")}
+        </table>
+      </div>`;
+
+    const adminWA = `🏏 *New ${type}!*\n\n👤 *Student:* ${data.studentName} (${data.ageGroup})\n👨 *Parent:* ${data.parentName}\n📞 *Phone:* ${data.phone}\n📧 *Email:* ${data.email}\n${data.isTrial ? `📅 *Trial Date:* ${data.trialDate||"TBD"}\n` : ""}🏫 *School:* ${data.school||"—"}\n⚠️ *Asthma:* ${data.asthma?"Yes":"No"}`;
+    const customerWA = `✅ *Application Received!*\n\nDear ${data.parentName}, we have received ${data.studentName}'s ${type} at PIR Cricket Academy.\n\nWe will contact you on ${data.phone} within 24 hours.\n\n🏏 PIR Cricket Academy — Patna`;
+
+    Promise.allSettled([
+      sendEmail(data.email, `Application Received — PIR Cricket Academy`, customerHtml),
+      sendEmail(adminEmail, `New ${type}: ${data.studentName} — PIR Cricket Academy`, adminHtml),
+      sendWhatsApp(data.phone, customerWA),
+      sendWhatsApp(adminPhone, adminWA),
+    ]).catch(() => {});
+
     return res.status(201).json(row);
   }
   if (req.method === "PATCH" && id && action === "status") {
