@@ -267,8 +267,8 @@ export default function Booking() {
                 <div><label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">Phone Number *</label>
                   <input required value={sel.phone} onChange={e=>setSel({...sel,phone:e.target.value})} className="w-full bg-background border border-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-secondary transition-colors" placeholder="+91 98765 43210"/></div>
               </div>
-              <div><label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">Email (optional)</label>
-                <input value={sel.email} onChange={e=>setSel({...sel,email:e.target.value})} className="w-full bg-background border border-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-secondary transition-colors" placeholder="ramesh@email.com"/></div>
+              <div><label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">Email Address *</label>
+                <input required type="email" value={sel.email} onChange={e=>setSel({...sel,email:e.target.value})} className="w-full bg-background border border-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-secondary transition-colors" placeholder="ramesh@email.com"/></div>
             </div>
             <div className="bg-secondary/5 border border-secondary/20 rounded-2xl p-5 mb-5">
               <p className="font-bold uppercase tracking-wider text-sm mb-3">Booking Summary</p>
@@ -281,7 +281,7 @@ export default function Booking() {
               </div>
             </div>
             {serverError && <p className="text-red-400 text-sm text-center bg-red-400/10 border border-red-400/20 rounded-lg p-3 mb-4">{serverError}</p>}
-            <button disabled={!sel.name||!sel.phone||submitting} onClick={pay}
+            <button disabled={!sel.name||!sel.phone||!sel.email||submitting} onClick={pay}
               className="w-full bg-secondary text-secondary-foreground font-bold uppercase py-4 rounded-xl hover:bg-secondary/90 transition-all shadow-[0_0_20px_rgba(234,179,8,0.25)] text-base disabled:opacity-40 flex items-center justify-center gap-3">
               <ShieldCheck className="h-5 w-5"/>
               {submitting ? "Opening Payment..." : `Pay ₹${total.toLocaleString()} via UPI`}

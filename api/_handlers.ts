@@ -249,7 +249,7 @@ async function handleBookings(req: VercelRequest, res: VercelResponse, sub: stri
       date: z.string().min(1), slot: z.string().min(1),
       duration: z.number().int().positive(), rate: z.number().int().positive(),
       total: z.number().int().positive(), name: z.string().min(1),
-      phone: z.string().min(1), email: z.string().optional(),
+      phone: z.string().min(1), email: z.string().email(),
     }).parse(req.body);
 
     // Server-side slot conflict check
