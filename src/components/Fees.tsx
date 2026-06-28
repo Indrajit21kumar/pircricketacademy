@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { CheckCircle, Zap, Star, Trophy, IndianRupee, Shield, MapPin, Home, Award, Flame, ChevronDown, ChevronUp } from "lucide-react";
+import { CheckCircle, Zap, Star, Trophy, IndianRupee, Shield, Home, Award, Flame, ChevronDown, ChevronUp, Users, Target } from "lucide-react";
 
 // ── Fee constants ─────────────────────────────────────────────────────────────
 const REGISTRATION_FEE = 5000;
@@ -30,34 +30,46 @@ const BASE_FEES = [
 // ── Special eligibility discounts ─────────────────────────────────────────────
 const SPECIAL_DISCOUNTS = [
   {
-    Icon: Flame, title: "India / Challenger Trophy Player", subtitle: "Completely Free Practice",
+    Icon: Flame, title: "India / Challenger Trophy Player", subtitle: "Completely Free — Tuition Fee",
     discount: "100% FREE", highlight: true,
     color: "text-secondary", bg: "bg-secondary/10 border-secondary/40", badge: "bg-secondary/20 text-secondary",
-    description: "Any cricketer who has represented India at any age group, or played in the Challenger Trophy, trains at PIR Cricket Academy free of charge — at any age. No fees, no conditions. This is our commitment to elite Indian cricket.",
+    description: "Any cricketer who has represented India at any age group, or played in the Challenger Trophy, trains at PIR Cricket Academy completely free of monthly tuition — at any age. No tuition fee, no conditions. This is our commitment to elite Indian cricket.",
   },
   {
-    Icon: Shield, title: "State Player", subtitle: "20% Off on All Fees",
-    discount: "20%", highlight: false,
+    Icon: Star, title: "Pre-Opening Founding Batch", subtitle: "25% Off — Tuition Fee",
+    discount: "25%", highlight: false,
+    color: "text-yellow-400", bg: "bg-yellow-500/10 border-yellow-500/30", badge: "bg-yellow-500/15 text-yellow-400",
+    description: "Register before 20 August 2026 and lock in 25% off your monthly tuition fee for the entire founding season. Applies to monthly tuition fee only — not on registration or kit fee. No document required; discount is automatic for all founding batch admissions.",
+  },
+  {
+    Icon: Shield, title: "State Player (Bihar)", subtitle: "15% Off — Tuition Fee",
+    discount: "15%", highlight: false,
     color: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/30", badge: "bg-blue-500/15 text-blue-400",
-    description: "Any player who has represented Bihar or another state in official BCCI-affiliated cricket (U-14, U-16, U-19, U-23, Senior) receives a flat 20% discount on all fees — registration, kit, and monthly training.",
+    description: "Any player who has represented Bihar in official BCCI-affiliated cricket (U-14, U-16, U-19, U-23, Senior) receives 15% off monthly tuition fee. Required: BCCI-affiliated scorecard or selection letter confirming Bihar state representation.",
   },
   {
-    Icon: Award, title: "State Selection from PIR Camp", subtitle: "50% Off — Ongoing Reward",
+    Icon: Target, title: "District Player (Patna)", subtitle: "10% Off — Tuition Fee",
+    discount: "10%", highlight: false,
+    color: "text-cyan-400", bg: "bg-cyan-500/10 border-cyan-500/30", badge: "bg-cyan-500/15 text-cyan-400",
+    description: "Any player who has represented Patna District in official BCCI / Patna District Cricket Association matches receives 10% off monthly tuition fee. Required: scorecard or selection letter from a BCCI-affiliated district tournament.",
+  },
+  {
+    Icon: Award, title: "State Selection from PIR Academy", subtitle: "50% Off — Ongoing Reward",
     discount: "50%", highlight: false,
     color: "text-orange-400", bg: "bg-orange-500/10 border-orange-500/30", badge: "bg-orange-500/15 text-orange-400",
-    description: "If you earn your state selection while training at PIR Cricket Academy, your monthly fees are cut by 50% immediately and remain at that rate for as long as you train here. Your success is our success.",
+    description: "If you earn your state selection while training at PIR Cricket Academy, your monthly tuition fee is cut by 50% immediately and remains at that rate for as long as you train here. Applies to tuition fee only. Your success is our success.",
   },
   {
-    Icon: MapPin, title: "Patna District Player", subtitle: "10% Off on All Fees",
-    discount: "10%", highlight: false,
-    color: "text-green-400", bg: "bg-green-500/10 border-green-500/30", badge: "bg-green-500/15 text-green-400",
-    description: "Players who represent Patna District in official district cricket receive a 10% discount on all academy fees as part of our commitment to nurturing local talent from our home district.",
-  },
-  {
-    Icon: Home, title: "Police Colony Resident", subtitle: "10% Off on All Fees",
+    Icon: Home, title: "Police Colony Resident", subtitle: "10% Off — Tuition Fee",
     discount: "10%", highlight: false,
     color: "text-purple-400", bg: "bg-purple-500/10 border-purple-500/30", badge: "bg-purple-500/15 text-purple-400",
-    description: "Residents of Police Colony, Patna receive a 10% discount on all academy fees. We are proud to be part of this community and want to make quality cricket coaching accessible to every family here.",
+    description: "Residents of Police Colony, Patna receive 10% off monthly tuition fee. Required: Aadhaar card of student or parent showing Police Colony, Patna address. Applies to tuition fee only.",
+  },
+  {
+    Icon: Users, title: "Sibling Discount", subtitle: "15% Off — Tuition Fee",
+    discount: "15%", highlight: false,
+    color: "text-teal-400", bg: "bg-teal-500/10 border-teal-500/30", badge: "bg-teal-500/15 text-teal-400",
+    description: "Families enrolling 2 or more children at PIRcricketHub simultaneously receive 15% off monthly tuition fee for each sibling. Required: enrollment receipt or Aadhaar of the sibling already registered. Applies to tuition fee only.",
   },
 ];
 

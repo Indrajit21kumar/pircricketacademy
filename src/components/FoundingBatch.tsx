@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Link } from "wouter";
 import { CheckCircle, Users, Star, Trophy, BarChart3, Zap, Tag, Clock } from "lucide-react";
 
 const benefits = [
@@ -45,10 +46,10 @@ export default function FoundingBatch() {
                 }
               </div>
             </div>
-            <button onClick={() => go("contact")}
+            <Link href="/admissions"
               className="shrink-0 bg-secondary text-secondary-foreground font-black uppercase tracking-wide px-6 py-3 rounded-xl hover:bg-secondary/90 transition-all text-sm shadow-[0_0_20px_rgba(234,179,8,0.4)] whitespace-nowrap">
               Claim 25% Off →
-            </button>
+            </Link>
           </div>
         </motion.div>
 
@@ -94,9 +95,9 @@ export default function FoundingBatch() {
                 <p className="text-muted-foreground text-sm">Once founding batch is full, registrations move to a waitlist.</p>
               </div>
 
-              <button onClick={() => go("contact")} className="w-full bg-secondary text-secondary-foreground font-bold uppercase tracking-wide py-4 rounded-xl hover:bg-secondary/90 transition-all shadow-[0_0_20px_rgba(234,179,8,0.2)] text-base">
-                Register & Claim 25% Discount
-              </button>
+              <Link href="/admissions" className="w-full bg-secondary text-secondary-foreground font-bold uppercase tracking-wide py-4 rounded-xl hover:bg-secondary/90 transition-all shadow-[0_0_20px_rgba(234,179,8,0.2)] text-base text-center block">
+                Apply & Claim 25% Discount
+              </Link>
               <p className="text-center text-muted-foreground text-xs">Free registration · No commitment · Discount applied at enrolment</p>
             </div>
           </div>

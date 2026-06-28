@@ -29,10 +29,26 @@ export const admissions = pgTable("admissions", {
   medicalNotes: text("medical_notes"),
   emergencyName: text("emergency_name").notNull(),
   emergencyPhone: text("emergency_phone").notNull(),
+  consentMedical: boolean("consent_medical").default(false).notNull(),
+  consentPhoto: boolean("consent_photo").default(false).notNull(),
+  consentLiability: boolean("consent_liability").default(false).notNull(),
+  consentTerms: boolean("consent_terms").default(false).notNull(),
+  consentData: boolean("consent_data").default(false).notNull(),
+  consentIp: text("consent_ip"),
   isTrial: boolean("is_trial").default(false).notNull(),
   trialDate: text("trial_date"),
   message: text("message"),
   source: text("source"),
+  packageMonths: integer("package_months"),                          // null=reg only, 3, 6, 12
+  packageDiscountPct: integer("package_discount_pct"),               // 0, 10, 15, 20
+  eligibilityDiscountPct: integer("eligibility_discount_pct"),       // 0, 10, 15, 20, 25, 50, 100
+  combinedDiscountPct: integer("combined_discount_pct"),
+  totalPaid: integer("total_paid").default(5000).notNull(),          // actual Razorpay amount in ₹
+  registrationFee: integer("registration_fee").default(5000).notNull(),
+  paymentStatus: text("payment_status").default("pending").notNull(), // pending | paid | failed | waived
+  razorpayOrderId: text("razorpay_order_id"),
+  razorpayPaymentId: text("razorpay_payment_id"),
+  paidAt: timestamp("paid_at"),
   status: text("status").default("new").notNull(), // new | trial_scheduled | joined | rejected
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -135,9 +151,12 @@ export const followUps = pgTable("follow_ups", {
 export const fees = pgTable("fees", {
   id: serial("id").primaryKey(),
   studentId: integer("student_id").references(() => students.id).notNull(),
-  month: text("month").notNull(),        // YYYY-MM
+  feeType: text("fee_type").default("monthly").notNull(), // monthly|admission|quarterly|annual|camp|tournament
+  month: text("month").notNull(),        // YYYY-MM or label
   amount: integer("amount").notNull(),   // in rupees
+  paidAmount: integer("paid_amount").default(0).notNull(),
   paid: boolean("paid").default(false).notNull(),
+  dueDate: text("due_date"),             // YYYY-MM-DD
   paidDate: text("paid_date"),
   receiptNo: text("receipt_no"),
   notes: text("notes"),
@@ -208,3 +227,42 @@ export type Notification   = typeof notifications.$inferSelect;
 export type FollowUp          = typeof followUps.$inferSelect;
 export type MessageTemplate   = typeof messageTemplates.$inferSelect;
 export type MessageCampaign   = typeof messageCampaigns.$inferSelect;
+
+// ── Discount types (admin-managed) ────────────────────────────────────────────
+export const discountTypes = pgTable("discount_types", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),                    // e.g. "Sibling Discount", "Sports Merit"
+  percentage: integer("percentage").notNull(),      // 0-100
+  description: text("description").notNull(),       // eligibility criteria shown to applicant
+  requiredDocument: text("required_document").notNull(), // e.g. "Sibling enrollment proof"
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ── Discount applications (student submits, admin approves) ───────────────────
+export const discountApplications = pgTable("discount_applications", {
+  id: serial("id").primaryKey(),
+  studentId: integer("student_id").references(() => students.id).notNull(),
+  discountTypeId: integer("discount_type_id").references(() => discountTypes.id).notNull(),
+  documentUrl: text("document_url"),               // uploaded proof (base64 or URL)
+  documentName: text("document_name"),
+  status: text("status").default("pending").notNull(), // pending | approved | rejected
+  reviewedBy: text("reviewed_by"),
+  reviewNotes: text("review_notes"),
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ── Password reset tokens ──────────────────────────────────────────────────────
+export const passwordResets = pgTable("password_resets", {
+  id: serial("id").primaryKey(),
+  username: text("username").notNull(),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type DiscountType           = typeof discountTypes.$inferSelect;
+export type DiscountApplication    = typeof discountApplications.$inferSelect;
+export type PasswordReset          = typeof passwordResets.$inferSelect;

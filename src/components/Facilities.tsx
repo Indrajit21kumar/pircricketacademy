@@ -1,6 +1,40 @@
 import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
-import { Calendar, Dumbbell, Video, Brain, Stethoscope, Users, Trophy, Layers, Zap, Target } from "lucide-react";
+import { Calendar, Dumbbell, Video, Brain, Stethoscope, Users, Trophy, Layers, Zap, Target, ChevronLeft, ChevronRight } from "lucide-react";
+
+function PhotoCarousel({ photos, name }: { photos: string[]; name: string }) {
+  const [idx, setIdx] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setIdx(i => (i + 1) % photos.length), 3500);
+    return () => clearInterval(t);
+  }, [photos.length]);
+  return (
+    <div className="relative overflow-hidden" style={{height:"200px"}}>
+      {photos.map((src, i) => (
+        <img key={src} src={src} alt={name}
+          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${i === idx ? "opacity-100" : "opacity-0"}`} />
+      ))}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+      {/* Dot indicators */}
+      <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5">
+        {photos.map((_, i) => (
+          <button key={i} onClick={() => setIdx(i)}
+            className={`w-1.5 h-1.5 rounded-full transition-all ${i === idx ? "bg-secondary w-4" : "bg-white/50"}`} />
+        ))}
+      </div>
+      {/* Prev/Next */}
+      <button onClick={() => setIdx(i => (i - 1 + photos.length) % photos.length)}
+        className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/70 text-white rounded-full p-1 transition-all opacity-0 group-hover:opacity-100">
+        <ChevronLeft className="h-4 w-4"/>
+      </button>
+      <button onClick={() => setIdx(i => (i + 1) % photos.length)}
+        className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/70 text-white rounded-full p-1 transition-all opacity-0 group-hover:opacity-100">
+        <ChevronRight className="h-4 w-4"/>
+      </button>
+    </div>
+  );
+}
 
 const worldClass = [
   { icon: Layers,      label: "Professional Turf Wicket",    desc: "Premium turf surface — near-match conditions for batting & bowling practice." },
@@ -16,17 +50,41 @@ const worldClass = [
 
 const bookable = [
   { id:"box",    name:"Box Cricket Arena",   emoji:"🏟️",
+    photos:[
+      "https://images.unsplash.com/photo-1540747913346-19212a4b423f?w=600&h=340&fit=crop",
+      "https://images.unsplash.com/photo-1624526267942-ab0ff8a3e972?w=600&h=340&fit=crop",
+      "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=600&h=340&fit=crop",
+    ],
     desc:"Fully enclosed box cricket arena with professional flooring, LED lighting, and safety netting.",
     pricing:[{slot:"Weekday",price:"₹1,500/hr"},{slot:"Weekend",price:"₹1,800/hr"},{slot:"Night",price:"₹2,200/hr"}],
     features:["Professional flooring","LED floodlights","Safety netting","Seating area","Change rooms"] },
   { id:"turf",   name:"Professional Turf Wicket", emoji:"🏏",
+    photos:[
+      "https://images.unsplash.com/photo-1531415074968-036ba1b575da?w=600&h=340&fit=crop",
+      "https://images.unsplash.com/photo-1593766788306-28561086694e?w=600&h=340&fit=crop",
+      "https://images.unsplash.com/photo-1615279085901-3bec90e6a11d?w=600&h=340&fit=crop",
+    ],
     desc:"Premium artificial turf wicket for realistic batting and bowling practice in near-match conditions.",
     pricing:[{slot:"Weekday",price:"₹800/hr"},{slot:"Weekend",price:"₹1,000/hr"}],
     features:["Artificial turf surface","Full pitch length","Bowling machine compatible","Practice nets","Coach available"] },
-  { id:"cement", name:"Cement Wicket",       emoji:"⚡",
-    desc:"Traditional cement wicket for pace and bounce training — essential for technique against fast bowling.",
+  { id:"cement", name:"Astro Turf / Cemented Wicket", emoji:"⚡",
+    photos:[
+      "https://images.unsplash.com/photo-1595429035839-c99c298ffdde?w=600&h=340&fit=crop",
+      "https://images.unsplash.com/photo-1531415074968-036ba1b575da?w=600&h=340&fit=crop&sat=-50",
+      "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=600&h=340&fit=crop&sat=-30",
+    ],
+    desc:"Astro turf or cemented wicket for pace and bounce training — essential for technique against fast bowling.",
     pricing:[{slot:"Weekday",price:"₹500/hr"},{slot:"Weekend",price:"₹700/hr"}],
     features:["Hard surface","True bounce","Pace development","Economical option","Available daily"] },
+  { id:"bowling-machine", name:"Bowling Machine", emoji:"🎯",
+    photos:[
+      "https://images.unsplash.com/photo-1624526267942-ab0ff8a3e972?w=600&h=340&fit=crop&sat=-20",
+      "https://images.unsplash.com/photo-1531415074968-036ba1b575da?w=600&h=340&fit=crop&hue-rotate=20",
+      "https://images.unsplash.com/photo-1615279085901-3bec90e6a11d?w=600&h=340&fit=crop",
+    ],
+    desc:"Professional bowling machine for pace, spin, and line-length drills — ideal for solo batting practice at any skill level.",
+    pricing:[{slot:"Weekday 30 min",price:"₹300"},{slot:"Weekday 1 hour",price:"₹500"},{slot:"Weekend 30 min",price:"₹400"},{slot:"Weekend 1 hour",price:"₹700"}],
+    features:["Pace & spin settings","Solo batting sessions","Line & length control","No booking limit","Operator assisted"] },
 ];
 
 export default function Facilities() {
@@ -58,13 +116,16 @@ export default function Facilities() {
           <h3 className="font-display text-2xl md:text-3xl font-bold mb-2">Book a Facility by the Hour</h3>
           <p className="text-muted-foreground">Transparent pricing. No hidden charges. Instant confirmation.</p>
         </div>
-        <div className="grid md:grid-cols-3 gap-6 mb-10">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
           {bookable.map((f, i) => (
             <motion.div key={f.id} initial={{opacity:0,y:20}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:i*0.1}}
-              className="bg-card border border-border rounded-2xl overflow-hidden hover:border-secondary/40 transition-colors group">
-              <div className="bg-gradient-to-br from-secondary/15 to-secondary/5 p-6 text-center">
-                <span className="text-5xl mb-3 block">{f.emoji}</span>
-                <h3 className="font-display font-bold text-xl text-foreground">{f.name}</h3>
+              className="bg-card border border-border rounded-2xl overflow-hidden hover:border-secondary/40 transition-all group hover:shadow-[0_0_24px_rgba(234,179,8,0.12)]">
+              <div className="relative">
+                <PhotoCarousel photos={(f as any).photos} name={f.name} />
+                <div className="absolute top-3 left-3 flex items-center gap-2 bg-black/60 backdrop-blur-sm rounded-xl px-3 py-1.5">
+                  <span className="text-lg">{f.emoji}</span>
+                  <h3 className="font-display font-bold text-sm text-white leading-tight">{f.name}</h3>
+                </div>
               </div>
               <div className="p-6">
                 <p className="text-muted-foreground text-sm leading-relaxed mb-5">{f.desc}</p>

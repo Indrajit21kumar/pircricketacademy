@@ -23,7 +23,9 @@ const founders = [
       "Born: October 21, 1987 · Patna, Bihar",
       "Academy vision, curriculum & player development",
     ],
-    showStats: true,
+    showStats: false,
+    linkedin: "https://www.linkedin.com/in/indrajitkumar-sap",
+    espn: "https://www.espncricinfo.com/cricketers/indrajit-kumar-1163681",
   },
   {
     initials: "PM",
@@ -37,6 +39,7 @@ const founders = [
       "Bihar Cricket Association affiliate",
       "Technical training & player assessment",
     ],
+    facebook: "https://www.facebook.com/profile.php?id=100013692180973",
   },
   {
     initials: "RR",
@@ -50,6 +53,7 @@ const founders = [
       "Sports Promoter, Bihar",
       "Ground operations & player welfare",
     ],
+    linkedin: "https://www.linkedin.com/in/ritesh-ranjan-62523a21a/",
   },
 ];
 
@@ -65,7 +69,7 @@ export default function Founder() {
 
         {/* Founder cards */}
         <div className="grid md:grid-cols-3 gap-6 mb-10">
-          {founders.map(({ initials, name, role, roleColor, photo, highlight, credentials, showStats }: any, i: number) => (
+          {founders.map(({ initials, name, role, roleColor, photo, highlight, credentials, showStats, linkedin, espn, facebook }: any, i: number) => (
             <motion.div key={name} initial={{opacity:0,y:20}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:i*0.1}} className="bg-card border border-secondary/20 rounded-2xl overflow-hidden flex flex-col">
               {/* Photo / Avatar */}
               {photo ? (
@@ -95,13 +99,38 @@ export default function Founder() {
                     ))}
                   </div>
                 )}
-                <ul className="space-y-2 mt-auto">
+                <ul className="space-y-2">
                   {credentials.map((c: string) => (
                     <li key={c} className="flex items-start gap-2 text-xs text-foreground/70">
                       <CheckCircle className="h-3.5 w-3.5 text-secondary shrink-0 mt-0.5" />{c}
                     </li>
                   ))}
                 </ul>
+                {(linkedin || espn || facebook) && (
+                  <div className="flex gap-2 mt-4 flex-wrap">
+                    {linkedin && (
+                      <a href={linkedin} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-[#0A66C2]/15 text-[#0A66C2] hover:bg-[#0A66C2]/25 transition-colors border border-[#0A66C2]/30">
+                        <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+                        LinkedIn
+                      </a>
+                    )}
+                    {facebook && (
+                      <a href={facebook} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-[#1877F2]/15 text-[#1877F2] hover:bg-[#1877F2]/25 transition-colors border border-[#1877F2]/30">
+                        <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                        Facebook
+                      </a>
+                    )}
+                    {espn && (
+                      <a href={espn} target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-secondary/10 text-secondary hover:bg-secondary/20 transition-colors border border-secondary/30">
+                        <Trophy className="h-3.5 w-3.5" />
+                        ESPN Profile
+                      </a>
+                    )}
+                  </div>
+                )}
               </div>
             </motion.div>
           ))}
@@ -118,7 +147,7 @@ export default function Founder() {
             <motion.div initial={{opacity:0,y:16}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:0.1}}
               className="bg-card border border-red-500/20 rounded-2xl overflow-hidden flex flex-col">
               <div className="relative overflow-hidden" style={{height:"240px"}}>
-                <img src="/images/vp-singh.png" alt="Dr. V.P. Singh" className="w-full h-full object-cover" style={{objectPosition:"50% 10%"}} />
+                <img src="/images/vp-singh.png" alt="Dr. V.P. Singh" className="w-full h-full object-cover" style={{objectPosition:"50% 5%"}} />
                 <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent" />
               </div>
               <div className="p-5 flex flex-col flex-1">
@@ -127,13 +156,19 @@ export default function Founder() {
                 </div>
                 <p className="font-display font-bold text-lg text-foreground mb-1">Dr. V.P. Singh</p>
                 <p className="text-red-400 text-xs font-semibold mb-3">Director, Savera Cancer & Multi Speciality Hospital</p>
-                <ul className="space-y-1.5 mt-auto">
+                <ul className="space-y-1.5">
                   {["Savera Cancer & Multi Speciality Hospital", "Health · Healing · Hope", "Medical support partner for PIR Academy"].map(c => (
                     <li key={c} className="flex items-start gap-2 text-xs text-foreground/70">
                       <CheckCircle className="h-3.5 w-3.5 text-red-400 shrink-0 mt-0.5" />{c}
                     </li>
                   ))}
                 </ul>
+                <div className="flex gap-2 mt-4">
+                  <a href="https://www.saverahospital.org/viewprofile/53" target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors border border-red-500/30">
+                    <Shield className="h-3.5 w-3.5" /> View Profile
+                  </a>
+                </div>
               </div>
             </motion.div>
 
@@ -150,13 +185,20 @@ export default function Founder() {
                 </div>
                 <p className="font-display font-bold text-lg text-foreground mb-1">Nikhil Singh</p>
                 <p className="text-blue-400 text-xs font-semibold mb-3">Technical Adviser, PIR Cricket Academy</p>
-                <ul className="space-y-1.5 mt-auto">
+                <ul className="space-y-1.5">
                   {["Strategic & technical advisory", "Sports infrastructure development", "Growth & outreach planning"].map(c => (
                     <li key={c} className="flex items-start gap-2 text-xs text-foreground/70">
                       <CheckCircle className="h-3.5 w-3.5 text-blue-400 shrink-0 mt-0.5" />{c}
                     </li>
                   ))}
                 </ul>
+                <div className="flex gap-2 mt-4">
+                  <a href="https://www.linkedin.com/in/nikhil-singh-20829915/" target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-lg bg-[#0A66C2]/15 text-[#0A66C2] hover:bg-[#0A66C2]/25 transition-colors border border-[#0A66C2]/30">
+                    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+                    LinkedIn
+                  </a>
+                </div>
               </div>
             </motion.div>
 
@@ -202,34 +244,37 @@ export default function Founder() {
             </div>
           </motion.div>
 
-          <motion.div initial={{opacity:0,x:20}} whileInView={{opacity:1,x:0}} viewport={{once:true}} className="space-y-4">
-            {/* Century photo */}
-            <div className="rounded-2xl overflow-hidden border border-secondary/20 relative">
-              <img src="/images/indrajit-century.jpeg" alt="Indrajit Kumar celebrating his double century" className="w-full h-64 object-cover object-top" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-              <div className="absolute bottom-0 left-0 right-0 p-4">
-                <p className="text-white font-bold text-sm">Bihar's First Double Centurion</p>
-                <p className="text-secondary text-xs font-semibold">Ranji Trophy — Post 2018 BCCI Affiliation</p>
+          <motion.div initial={{opacity:0,x:20}} whileInView={{opacity:1,x:0}} viewport={{once:true}} className="flex flex-col gap-4">
+            {/* Two photos side by side */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* Century photo */}
+              <div className="rounded-2xl overflow-hidden border border-secondary/20 relative" style={{height:"200px"}}>
+                <img src="/images/indrajit-century.jpeg" alt="Bihar's First Double Centurion" className="w-full h-full object-cover object-top" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 p-3">
+                  <p className="text-white font-bold text-xs leading-tight">Bihar's First Double Centurion</p>
+                  <p className="text-secondary text-[10px] font-semibold mt-0.5">Ranji Trophy — Post 2018 BCCI</p>
+                </div>
               </div>
-            </div>
 
-            {/* Ranji award photo */}
-            <div className="rounded-2xl overflow-hidden border border-border relative">
-              <img src="/images/ranji-award.jpeg" alt="Ranji Trophy 2019-20 award ceremony" className="w-full h-48 object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-              <div className="absolute bottom-0 left-0 right-0 p-4">
-                <p className="text-white font-bold text-sm">Ranji Trophy 2019–20</p>
-                <p className="text-white/60 text-xs">Award Ceremony, Balurghat Stadium</p>
+              {/* Ranji award photo */}
+              <div className="rounded-2xl overflow-hidden border border-border relative" style={{height:"200px"}}>
+                <img src="/images/ranji-award.jpeg" alt="Ranji Trophy 2019-20 award ceremony" className="w-full h-full object-cover object-center" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 p-3">
+                  <p className="text-white font-bold text-xs leading-tight">Ranji Trophy 2019–20</p>
+                  <p className="text-white/60 text-[10px] mt-0.5">Balurghat Stadium</p>
+                </div>
               </div>
             </div>
 
             {/* Quote */}
-            <div className="bg-card border border-border rounded-2xl p-6">
-              <Quote className="h-8 w-8 text-secondary mb-3" />
-              <p className="text-foreground/80 text-base leading-relaxed italic">
+            <div className="bg-card border border-border rounded-2xl p-5">
+              <Quote className="h-6 w-6 text-secondary mb-2" />
+              <p className="text-foreground/80 text-sm leading-relaxed italic">
                 "We didn't just build an academy. We built the system we wish we had — structured, transparent, and built to take Bihar's best to the national stage."
               </p>
-              <p className="text-secondary font-bold text-sm mt-3 uppercase tracking-wide">— The PIR Founding Partners</p>
+              <p className="text-secondary font-bold text-xs mt-3 uppercase tracking-wide">— The PIR Founding Partners</p>
             </div>
           </motion.div>
         </div>

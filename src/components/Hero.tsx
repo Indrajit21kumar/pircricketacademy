@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import { Link } from "wouter";
 import { Trophy, ChevronRight } from "lucide-react";
 
 const LAUNCH = new Date("2026-08-01T00:00:00+05:30");
@@ -93,9 +94,9 @@ export default function Hero() {
         )}
 
         <motion.div initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} transition={{duration:0.5,delay:0.5}} className="flex flex-col sm:flex-row gap-4 justify-center">
-          <button onClick={() => go("contact")} className="bg-secondary text-secondary-foreground font-bold uppercase tracking-wide text-base px-8 py-4 rounded-xl hover:bg-secondary/90 transition-all shadow-[0_0_30px_rgba(234,179,8,0.3)] hover:shadow-[0_0_40px_rgba(234,179,8,0.5)]">
-            Register Interest — Free
-          </button>
+          <Link href="/admissions" className="bg-secondary text-secondary-foreground font-bold uppercase tracking-wide text-base px-8 py-4 rounded-xl hover:bg-secondary/90 transition-all shadow-[0_0_30px_rgba(234,179,8,0.3)] hover:shadow-[0_0_40px_rgba(234,179,8,0.5)]">
+            Apply for Admission — Free
+          </Link>
           <button onClick={() => go("founding-batch")} className="border border-white/30 text-white font-bold uppercase tracking-wide text-base px-8 py-4 rounded-xl hover:bg-white/10 transition-all backdrop-blur-sm flex items-center justify-center gap-2">
             Founding Batch Benefits <ChevronRight className="h-5 w-5" />
           </button>

@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Link } from "wouter";
 
 const programs = [
   { age:"U8", name:"Fun & Fundamentals", color:"from-emerald-500/20 to-emerald-500/5", border:"border-emerald-500/30", badge:"bg-emerald-500/20 text-emerald-400",
@@ -53,9 +54,9 @@ export default function Programs() {
             className="bg-secondary/10 border border-secondary/30 rounded-2xl p-6 flex flex-col justify-center items-center text-center gap-4">
             <p className="font-display font-bold text-xl text-foreground">Not sure which program?</p>
             <p className="text-muted-foreground text-sm">Book a free trial session. Our coach will assess and recommend the right batch for your child.</p>
-            <button onClick={() => document.getElementById("contact")?.scrollIntoView({behavior:"smooth"})} className="bg-secondary text-secondary-foreground font-bold uppercase text-sm px-6 py-3 rounded-xl hover:bg-secondary/90 transition-colors w-full">
+            <Link href="/admissions" className="bg-secondary text-secondary-foreground font-bold uppercase text-sm px-6 py-3 rounded-xl hover:bg-secondary/90 transition-colors w-full text-center block">
               Book Free Trial
-            </button>
+            </Link>
           </motion.div>
         </div>
       </div>

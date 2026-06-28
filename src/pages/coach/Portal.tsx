@@ -2,12 +2,88 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import {
   ClipboardList, Star, QrCode, BookOpen, Users,
-  CheckCircle, ChevronRight, Plus, X, Save
+  CheckCircle, ChevronRight, Plus, X, Save, LogIn, AlertCircle
 } from "lucide-react";
 
 const TODAY = new Date().toISOString().split("T")[0];
 const inp = "w-full bg-[#0a0f1e] border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-yellow-500";
 const lbl = "block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1.5";
+const COACH_TOKEN_KEY = "pir_coach_token";
+const COACH_USER_KEY  = "pir_coach_user";
+
+// ─── JWT helpers ──────────────────────────────────────────────────────────────
+function getCoachToken() { return localStorage.getItem(COACH_TOKEN_KEY); }
+function getCoachUser(): { name: string; username: string } | null {
+  try { return JSON.parse(localStorage.getItem(COACH_USER_KEY) || "null"); } catch { return null; }
+}
+function clearCoach() { localStorage.removeItem(COACH_TOKEN_KEY); localStorage.removeItem(COACH_USER_KEY); }
+
+// ─── Login Screen ─────────────────────────────────────────────────────────────
+function CoachLogin({ onLogin }: { onLogin: (name: string) => void }) {
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true); setError("");
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Login failed");
+      if (data.user.role !== "coach") throw new Error("This login is for coaches only. Use Admin Login for admin access.");
+      localStorage.setItem(COACH_TOKEN_KEY, data.token);
+      localStorage.setItem(COACH_USER_KEY, JSON.stringify({ name: data.user.name, username: data.user.username }));
+      onLogin(data.user.name);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#0a0f1e] flex items-center justify-center p-4">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-yellow-500/10 border-2 border-yellow-500/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <ClipboardList className="h-8 w-8 text-yellow-400" />
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-1">Coach Portal</h1>
+          <p className="text-gray-400 text-sm">PIRcricketHub — Staff Login</p>
+        </div>
+        <form onSubmit={submit} className="space-y-4">
+          <div>
+            <label className={lbl}>Username</label>
+            <input required className={inp} value={username} onChange={e => setUsername(e.target.value)} placeholder="coach.ravi" autoComplete="username" />
+          </div>
+          <div>
+            <label className={lbl}>Password</label>
+            <input required type="password" className={inp} value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" autoComplete="current-password" />
+          </div>
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-red-400 shrink-0" />
+              <p className="text-red-400 text-sm">{error}</p>
+            </div>
+          )}
+          <button type="submit" disabled={loading}
+            className="w-full bg-yellow-500 text-black font-bold py-3.5 rounded-xl hover:bg-yellow-400 transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
+            <LogIn className="h-4 w-4" />{loading ? "Signing in..." : "Sign In"}
+          </button>
+        </form>
+        <p className="text-center text-gray-600 text-xs mt-6">
+          Coach accounts are created by the Admin.<br />
+          Contact <a href="https://wa.me/918936061688" className="text-yellow-500 hover:text-yellow-400">Admin</a> if you need access.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 // ─── Session Notes Tab ───────────────────────────────────────────────
 function SessionNotesTab({ coachName, batches }: { coachName: string; batches: any[] }) {
@@ -17,7 +93,8 @@ function SessionNotesTab({ coachName, batches }: { coachName: string; batches: a
   const [saving, setSaving] = useState(false);
 
   const load = () =>
-    fetch("/api/session-notes").then(r => r.json()).then(data => setNotes(Array.isArray(data) ? data.reverse() : []));
+    fetch("/api/session-notes", { headers: { Authorization: `Bearer ${getCoachToken()}` } })
+      .then(r => r.json()).then(data => setNotes(Array.isArray(data) ? data.reverse() : []));
 
   useEffect(() => { load(); }, []);
 
@@ -26,7 +103,7 @@ function SessionNotesTab({ coachName, batches }: { coachName: string; batches: a
     setSaving(true);
     await fetch("/api/session-notes", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${getCoachToken()}` },
       body: JSON.stringify({ ...form, batchId: form.batchId ? parseInt(form.batchId) : null, coachName }),
     });
     setSaving(false);
@@ -130,8 +207,9 @@ function PlayerRatingsTab({ coachName, batches }: { coachName: string; batches: 
   });
 
   const load = () => {
-    fetch("/api/students").then(r => r.json()).then(d => setStudents(Array.isArray(d) ? d : []));
-    fetch("/api/player-ratings").then(r => r.json()).then(d => setRatings(Array.isArray(d) ? d.reverse() : []));
+    const h = { Authorization: `Bearer ${getCoachToken()}` };
+    fetch("/api/students", { headers: h }).then(r => r.json()).then(d => setStudents(Array.isArray(d) ? d : []));
+    fetch("/api/player-ratings", { headers: h }).then(r => r.json()).then(d => setRatings(Array.isArray(d) ? d.reverse() : []));
   };
 
   useEffect(() => { load(); }, []);
@@ -142,7 +220,7 @@ function PlayerRatingsTab({ coachName, batches }: { coachName: string; batches: 
     setSaving(true);
     await fetch("/api/player-ratings", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${getCoachToken()}` },
       body: JSON.stringify({ ...form, studentId: parseInt(form.studentId), batchId: form.batchId ? parseInt(form.batchId) : null, coachName }),
     });
     setSaving(false);
@@ -239,7 +317,7 @@ function BatchesTab({ batches, onRefresh }: { batches: any[]; onRefresh: () => v
     setSaving(true);
     await fetch("/api/batches", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${getCoachToken()}` },
       body: JSON.stringify(form),
     });
     setSaving(false);
@@ -315,15 +393,24 @@ const TABS = [
 export default function CoachPortal() {
   const [, navigate] = useLocation();
   const [tab, setTab] = useState("batches");
-  const [coachName, setCoachName] = useState(localStorage.getItem("coachName") || "");
+  const [coachName, setCoachName] = useState<string | null>(null);
   const [batches, setBatches] = useState<any[]>([]);
 
+  useEffect(() => {
+    const user = getCoachUser();
+    const token = getCoachToken();
+    if (user && token) setCoachName(user.name);
+  }, []);
+
   const loadBatches = () =>
-    fetch("/api/batches").then(r => r.json()).then(d => setBatches(Array.isArray(d) ? d : []));
+    fetch("/api/batches", { headers: { Authorization: `Bearer ${getCoachToken()}` } })
+      .then(r => r.json()).then(d => setBatches(Array.isArray(d) ? d : []));
 
-  useEffect(() => { loadBatches(); }, []);
+  useEffect(() => { if (coachName) loadBatches(); }, [coachName]);
 
-  const saveCoach = () => { if (coachName) localStorage.setItem("coachName", coachName); };
+  const logout = () => { clearCoach(); setCoachName(null); };
+
+  if (!coachName) return <CoachLogin onLogin={name => { setCoachName(name); }} />;
 
   return (
     <div className="min-h-screen bg-[#0d1529] text-white">
@@ -334,33 +421,25 @@ export default function CoachPortal() {
             <ClipboardList className="h-6 w-6 text-yellow-400" />
             <div>
               <h1 className="font-bold text-white">Coach Portal</h1>
-              <p className="text-xs text-gray-400">PIR Cricket Academy</p>
+              <p className="text-xs text-gray-400">PIRcricketHub</p>
             </div>
           </div>
-          <button onClick={() => navigate("/coach/scan")} className="flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 font-bold px-3 py-2 rounded-xl text-xs hover:bg-yellow-500/20">
-            <QrCode className="h-4 w-4" /> Scan QR
-          </button>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 text-sm text-gray-400">
+              <CheckCircle className="h-4 w-4 text-green-400" />
+              <span className="text-white font-bold">{coachName}</span>
+            </div>
+            <button onClick={() => navigate("/coach/scan")} className="flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 font-bold px-3 py-2 rounded-xl text-xs hover:bg-yellow-500/20">
+              <QrCode className="h-4 w-4" /> Scan QR
+            </button>
+            <button onClick={logout} className="text-xs text-gray-500 hover:text-gray-300 border border-gray-700 px-3 py-2 rounded-xl flex items-center gap-1">
+              <X className="h-3 w-3" /> Logout
+            </button>
+          </div>
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto p-4 md:p-6">
-        {/* Coach name */}
-        {!coachName && (
-          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 mb-6 flex gap-3 items-center">
-            <input className="flex-1 bg-transparent text-white text-sm focus:outline-none" placeholder="Enter your coach name to continue..."
-              value={coachName} onChange={e => setCoachName(e.target.value)} onBlur={saveCoach} />
-            <button onClick={saveCoach} className="text-yellow-400 font-bold text-sm">Save</button>
-          </div>
-        )}
-
-        {coachName && (
-          <div className="flex items-center gap-2 mb-6 text-sm text-gray-400">
-            <CheckCircle className="h-4 w-4 text-green-400" />
-            Logged in as <span className="text-white font-bold">{coachName}</span>
-            <button onClick={() => { setCoachName(""); localStorage.removeItem("coachName"); }} className="text-xs text-gray-600 hover:text-gray-400 ml-1"><X className="h-3 w-3" /></button>
-          </div>
-        )}
-
         {/* Tabs */}
         <div className="flex gap-1 bg-[#0a0f1e] border border-gray-800 rounded-xl p-1 mb-6 overflow-x-auto">
           {TABS.map(({ id, label, icon: Icon }) => (
@@ -374,8 +453,8 @@ export default function CoachPortal() {
         {/* Tab content */}
         <div className="bg-[#0a0f1e] border border-gray-800 rounded-2xl p-5">
           {tab === "batches" && <BatchesTab batches={batches} onRefresh={loadBatches} />}
-          {tab === "notes" && <SessionNotesTab coachName={coachName || "Coach"} batches={batches} />}
-          {tab === "ratings" && <PlayerRatingsTab coachName={coachName || "Coach"} batches={batches} />}
+          {tab === "notes" && <SessionNotesTab coachName={coachName} batches={batches} />}
+          {tab === "ratings" && <PlayerRatingsTab coachName={coachName} batches={batches} />}
         </div>
 
         {/* Quick links */}

@@ -11,20 +11,26 @@ declare global {
 }
 
 const FACILITIES = [
-  { id:"box",    name:"Box Cricket Arena", emoji:"🏟️", pricing:{weekday:1500, weekend:1800, night:2200} },
-  { id:"turf",   name:"Turf Wicket",       emoji:"🏏", pricing:{weekday:800,  weekend:1000, night:null} },
-  { id:"cement", name:"Cement Wicket",     emoji:"⚡", pricing:{weekday:500,  weekend:700,  night:null} },
+  { id:"box",     name:"Box Cricket Arena",   emoji:"🏟️", pricing:{weekday:1500, weekend:1800, night:2200},  unit:"hr",   durations:[1,2,3] },
+  { id:"turf",    name:"Turf Wicket",         emoji:"🏏", pricing:{weekday:800,  weekend:1000, night:null},   unit:"hr",   durations:[1,2,3] },
+  { id:"cement",  name:"Astro Turf / Cemented Wicket", emoji:"⚡", pricing:{weekday:500, weekend:700, night:null}, unit:"hr", durations:[1,2,3] },
+  { id:"bowling", name:"Bowling Machine Bay", emoji:"🎳", pricing:{weekday:300,  weekend:400,  night:null},   unit:"30min",durations:[1,2] },
 ];
 const SLOTS = ["06:00 AM","07:00 AM","08:00 AM","09:00 AM","10:00 AM","11:00 AM","12:00 PM","01:00 PM","02:00 PM","03:00 PM","04:00 PM","05:00 PM","06:00 PM","07:00 PM","08:00 PM","09:00 PM"];
-const DURATIONS = [1,2,3];
 
 function getRate(facility: typeof FACILITIES[0], slot: string, date: string) {
   if (!date || !slot) return facility.pricing.weekday;
   const day = new Date(date).getDay();
   const isWeekend = day === 0 || day === 6;
-  const isNight = slot.includes("PM") && parseInt(slot) >= 6;
+  const NIGHT_SLOTS = ["06:00 PM","07:00 PM","08:00 PM","09:00 PM"];
+  const isNight = NIGHT_SLOTS.includes(slot);
   if (isNight && facility.pricing.night) return facility.pricing.night;
   return isWeekend ? facility.pricing.weekend : facility.pricing.weekday;
+}
+
+function durationLabel(facility: typeof FACILITIES[0], d: number) {
+  if (facility.unit === "30min") return d === 1 ? "30 min" : "1 hour";
+  return d === 1 ? "1 Hour" : `${d} Hours`;
 }
 
 function loadRazorpayScript(): Promise<boolean> {
@@ -100,7 +106,7 @@ export default function Booking() {
           amount,
           currency: "INR",
           order_id: orderId,
-          name: "PIR Cricket Academy",
+          name: "PIRcricketHub",
           description: `${facility.name} · ${sel.date} · ${sel.slot}`,
           image: "/logo.png",
           prefill: { name: sel.name, contact: sel.phone, email: sel.email || "" },
@@ -172,7 +178,7 @@ export default function Booking() {
       <div className="pt-28 pb-10 bg-gradient-to-b from-secondary/5 to-background">
         <div className="container mx-auto px-4 text-center">
           <h1 className="font-display text-4xl md:text-5xl font-bold mb-3">Book a Facility</h1>
-          <p className="text-muted-foreground text-lg">Box Cricket · Turf Wicket · Cement Wicket</p>
+          <p className="text-muted-foreground text-lg">Box Cricket · Turf Wicket · Cement Wicket · Bowling Machine</p>
           <div className="flex justify-center gap-2 mt-6">
             {[1,2,3].map(s=>(
               <button key={s} onClick={() => { if (step > s) setStep(s); }} disabled={step < s}
@@ -191,14 +197,14 @@ export default function Booking() {
             <h2 className="font-display text-2xl font-bold mb-6">Select Facility</h2>
             <div className="space-y-4">
               {FACILITIES.map(f=>(
-                <button key={f.id} onClick={()=>{setSel({...sel,facility:f.id,slot:""});setBookedSlots([]);setStep(2);}}
+                <button key={f.id} onClick={()=>{setSel({...sel,facility:f.id,slot:"",duration:1});setBookedSlots([]);setStep(2);}}
                   className={`w-full bg-card border rounded-2xl p-6 text-left flex items-center gap-5 hover:border-secondary/50 transition-all ${sel.facility===f.id?"border-secondary":"border-border"}`}>
                   <span className="text-4xl">{f.emoji}</span>
                   <div className="flex-1">
                     <p className="font-bold text-lg">{f.name}</p>
                     <div className="flex flex-wrap gap-4 mt-1.5 text-sm text-muted-foreground">
-                      <span>Weekday: <strong className="text-secondary">₹{f.pricing.weekday}/hr</strong></span>
-                      <span>Weekend: <strong className="text-secondary">₹{f.pricing.weekend}/hr</strong></span>
+                      <span>Weekday: <strong className="text-secondary">₹{f.pricing.weekday}/{f.unit}</strong></span>
+                      <span>Weekend: <strong className="text-secondary">₹{f.pricing.weekend}/{f.unit}</strong></span>
                       {f.pricing.night && <span>Night: <strong className="text-secondary">₹{f.pricing.night}/hr</strong></span>}
                     </div>
                   </div>
@@ -240,15 +246,15 @@ export default function Booking() {
                 </div></div>
               <div><label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">Duration</label>
                 <div className="flex gap-3">
-                  {DURATIONS.map(d=>(
-                    <button key={d} onClick={()=>setSel({...sel,duration:d})} className={`flex-1 py-2.5 rounded-lg text-sm font-bold border transition-all ${sel.duration===d?"bg-secondary text-secondary-foreground border-secondary":"bg-background border-border hover:border-secondary/40"}`}>{d} Hour{d>1?"s":""}</button>
+                  {(facility?.durations ?? [1,2,3]).map(d=>(
+                    <button key={d} onClick={()=>setSel({...sel,duration:d})} className={`flex-1 py-2.5 rounded-lg text-sm font-bold border transition-all ${sel.duration===d?"bg-secondary text-secondary-foreground border-secondary":"bg-background border-border hover:border-secondary/40"}`}>{durationLabel(facility!, d)}</button>
                   ))}
                 </div></div>
               {sel.date && sel.slot && (
                 <div className="bg-secondary/10 border border-secondary/30 rounded-xl p-4">
                   <p className="text-sm text-muted-foreground">Estimated total</p>
                   <p className="font-display text-2xl font-bold text-secondary">₹{(rate*sel.duration).toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">₹{rate}/hr × {sel.duration}hr</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">₹{rate}/{facility?.unit} × {durationLabel(facility!, sel.duration)}</p>
                 </div>
               )}
               <button disabled={!sel.date||!sel.slot} onClick={()=>setStep(3)} className="w-full bg-secondary text-secondary-foreground font-bold uppercase py-4 rounded-xl hover:bg-secondary/90 transition-all disabled:opacity-40 disabled:cursor-not-allowed">Continue</button>
@@ -276,7 +282,7 @@ export default function Booking() {
                 <div className="flex justify-between"><span>Facility</span><span className="text-foreground font-semibold">{facility?.name}</span></div>
                 <div className="flex justify-between"><span>Date</span><span className="text-foreground font-semibold">{sel.date}</span></div>
                 <div className="flex justify-between"><span>Time</span><span className="text-foreground font-semibold">{sel.slot}</span></div>
-                <div className="flex justify-between"><span>Duration</span><span className="text-foreground font-semibold">{sel.duration}hr</span></div>
+                <div className="flex justify-between"><span>Duration</span><span className="text-foreground font-semibold">{facility ? durationLabel(facility, sel.duration) : ""}</span></div>
                 <div className="flex justify-between border-t border-border/50 pt-2 mt-2"><span className="font-bold text-foreground">Total</span><span className="font-display font-bold text-secondary text-lg">₹{total.toLocaleString()}</span></div>
               </div>
             </div>

@@ -4,14 +4,34 @@ import {
   inquiries, admissions, bookings, users, batches, students,
   attendance, messageTemplates, messageCampaigns, followUps, fees,
   notifications, sessionNotes, playerRatings, events,
+  discountTypes, discountApplications, passwordResets,
 } from "../server/db/schema.js";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-const JWT_SECRET = process.env.JWT_SECRET || "pir-academy-secret-2024";
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) throw new Error("JWT_SECRET environment variable is not set");
+
+// ── Auth helpers ───────────────────────────────────────────────────────────────
+function authenticate(req: VercelRequest): any {
+  const auth = req.headers.authorization;
+  if (!auth?.startsWith("Bearer ")) throw Object.assign(new Error("Unauthorized"), { status: 401 });
+  try { return jwt.verify(auth.slice(7), JWT_SECRET!); }
+  catch { throw Object.assign(new Error("Invalid or expired token"), { status: 401 }); }
+}
+function requireAdmin(req: VercelRequest): any {
+  const claims = authenticate(req);
+  if (claims.role !== "admin") throw Object.assign(new Error("Admin only"), { status: 403 });
+  return claims;
+}
+function requireStaff(req: VercelRequest): any {
+  const claims = authenticate(req);
+  if (claims.role !== "admin" && claims.role !== "coach") throw Object.assign(new Error("Staff only"), { status: 403 });
+  return claims;
+}
 
 // ── Auth ───────────────────────────────────────────────────────────────────────
 async function handleAuth(req: VercelRequest, res: VercelResponse, sub: string[]) {
@@ -31,7 +51,7 @@ async function handleAuth(req: VercelRequest, res: VercelResponse, sub: string[]
     if (!user) return res.status(401).json({ error: "Invalid credentials" });
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) return res.status(401).json({ error: "Invalid credentials" });
-    const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: "7d" });
+    const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET!, { expiresIn: "7d" });
     return res.json({ token, user: { id: user.id, username: user.username, role: user.role, name: user.name } });
   }
   return res.status(404).json({ error: "Not found" });
@@ -42,6 +62,7 @@ async function handleInquiries(req: VercelRequest, res: VercelResponse, sub: str
   const id = sub[0] ? parseInt(sub[0]) : null;
   const action = sub[1];
   if (req.method === "GET") {
+    try { requireAdmin(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
     const all = await db.select().from(inquiries).orderBy(inquiries.createdAt);
     return res.json(all.reverse());
   }
@@ -55,7 +76,9 @@ async function handleInquiries(req: VercelRequest, res: VercelResponse, sub: str
     return res.status(201).json(row);
   }
   if (req.method === "PATCH" && id && action === "status") {
-    const [row] = await db.update(inquiries).set({ status: req.body.status }).where(eq(inquiries.id, id)).returning();
+    try { requireAdmin(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
+    const { status } = z.object({ status: z.enum(["new","contacted","converted","not_interested"]) }).parse(req.body);
+    const [row] = await db.update(inquiries).set({ status }).where(eq(inquiries.id, id)).returning();
     return res.json(row);
   }
   return res.status(405).json({ error: "Method not allowed" });
@@ -63,6 +86,7 @@ async function handleInquiries(req: VercelRequest, res: VercelResponse, sub: str
 
 // ── Follow-ups ─────────────────────────────────────────────────────────────────
 async function handleFollowUps(req: VercelRequest, res: VercelResponse) {
+  try { requireAdmin(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
   if (req.method === "GET") {
     const { inquiryId } = req.query as Record<string, string>;
     const all = inquiryId
@@ -82,13 +106,93 @@ async function handleFollowUps(req: VercelRequest, res: VercelResponse) {
 }
 
 // ── Admissions ─────────────────────────────────────────────────────────────────
+async function sendAdmissionNotifications(data: {
+  studentName: string; ageGroup: string; parentName: string; phone: string; email?: string;
+  isTrial: boolean; trialDate?: string; school?: string; asthma: boolean;
+  emergencyName: string; emergencyPhone: string; dob: string; address?: string;
+  razorpayPaymentId?: string; admissionId: number;
+}) {
+  const adminEmail = process.env.ADMIN_EMAIL || "kumarindrajitcricket@gmail.com";
+  const adminPhone = process.env.ADMIN_PHONE || "7903053204";
+  const type = data.isTrial ? "Free Trial Session" : "Admission Application";
+
+  const customerHtml = `
+    <div style="font-family:sans-serif;max-width:500px;margin:0 auto;background:#0a0f1e;color:#fff;border-radius:12px;overflow:hidden">
+      <div style="background:#eab308;padding:24px;text-align:center">
+        <h1 style="margin:0;color:#000;font-size:22px">PIR Cricket Academy</h1>
+        <p style="margin:4px 0 0;color:#000;font-size:14px">Registration Confirmed ✅</p>
+      </div>
+      <div style="padding:28px">
+        <p style="color:#94a3b8;margin:0 0 20px">Dear <strong style="color:#fff">${data.parentName}</strong>, we have received ${data.studentName}'s ${type} and ₹5,000 registration fee.</p>
+        <table style="width:100%;border-collapse:collapse">
+          ${[["Student",data.studentName],["Age Group",data.ageGroup],["Type",type],["Trial Date",data.trialDate||"—"],["Registration Fee","₹5,000 Paid ✓"],["Payment ID",data.razorpayPaymentId||"—"],["Status","Under Review"]].map(([k,v])=>`<tr><td style="padding:8px 0;color:#94a3b8;border-bottom:1px solid #1e293b;font-size:14px">${k}</td><td style="padding:8px 0;color:#fff;border-bottom:1px solid #1e293b;font-size:14px;font-weight:bold;text-align:right">${v}</td></tr>`).join("")}
+        </table>
+        <p style="color:#94a3b8;margin:24px 0 0;font-size:13px">We will contact you on <strong style="color:#fff">${data.phone}</strong> within 24 hours. For queries, WhatsApp us at +91 ${adminPhone}</p>
+      </div>
+    </div>`;
+
+  const adminHtml = `
+    <div style="font-family:sans-serif;max-width:500px;margin:0 auto">
+      <h2 style="color:#eab308">🏏 New ${type} (Payment Confirmed) — PIR Cricket Academy</h2>
+      <table style="width:100%;border-collapse:collapse">
+        ${[["Student",data.studentName],["DOB",data.dob],["Age Group",data.ageGroup],["School",data.school||"—"],["Parent",data.parentName],["Phone",data.phone],["Email",data.email||"—"],["Address",data.address||"—"],["Trial",data.isTrial?"Yes — "+(data.trialDate||"date TBD"):"No"],["Asthma",data.asthma?"Yes":"No"],["Emergency",data.emergencyName+" / "+data.emergencyPhone],["Reg Fee","₹5,000 Paid"],["Payment ID",data.razorpayPaymentId||"—"],["Admission ID","ADM-"+data.admissionId]].map(([k,v])=>`<tr><td style="padding:6px 12px 6px 0;color:#666;font-size:14px">${k}</td><td style="padding:6px 0;font-weight:bold;font-size:14px">${v}</td></tr>`).join("")}
+      </table>
+    </div>`;
+
+  const adminWA = `🏏 *New ${type}!* (₹5,000 Paid)\n\n👤 *Student:* ${data.studentName} (${data.ageGroup})\n👨 *Parent:* ${data.parentName}\n📞 *Phone:* ${data.phone}\n📧 *Email:* ${data.email||"—"}\n${data.isTrial ? `📅 *Trial Date:* ${data.trialDate||"TBD"}\n` : ""}🏫 *School:* ${data.school||"—"}\n⚠️ *Asthma:* ${data.asthma?"Yes":"No"}\n💳 *Payment ID:* ${data.razorpayPaymentId||"—"}\n🔖 *Ref:* ADM-${data.admissionId}`;
+  const customerWA = `✅ *Registration Confirmed!*\n\nDear ${data.parentName}, we have received ${data.studentName}'s ${type} at PIR Cricket Academy and your ₹5,000 registration fee has been confirmed.\n\nWe will contact you on ${data.phone} within 24 hours.\n\n🏏 PIR Cricket Academy — Patna`;
+
+  await Promise.allSettled([
+    data.email ? sendEmail(data.email, `Registration Confirmed — PIR Cricket Academy`, customerHtml) : Promise.resolve(),
+    sendEmail(adminEmail, `New ${type}: ${data.studentName} — PIR Cricket Academy`, adminHtml),
+    data.phone ? sendWhatsApp(data.phone, customerWA) : Promise.resolve(),
+    sendWhatsApp(adminPhone, adminWA),
+  ]);
+}
+
 async function handleAdmissions(req: VercelRequest, res: VercelResponse, sub: string[]) {
-  const id = sub[0] ? parseInt(sub[0]) : null;
-  const action = sub[1];
+  const first = sub[0];
+  const id = first && first !== "verify" ? parseInt(first) : null;
+  const action = id ? sub[1] : first;
+
   if (req.method === "GET") {
+    try { requireAdmin(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
     const all = await db.select().from(admissions).orderBy(admissions.createdAt);
     return res.json(all.reverse());
   }
+
+  // POST /admissions/verify — verify Razorpay payment, update DB, send notifications
+  if (req.method === "POST" && action === "verify") {
+    const { admissionId, razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
+    const keySecret = process.env.RAZORPAY_KEY_SECRET || "";
+    const expected = crypto
+      .createHmac("sha256", keySecret)
+      .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+      .digest("hex");
+    if (expected !== razorpaySignature) {
+      return res.status(400).json({ error: "Payment verification failed — signature mismatch" });
+    }
+    const [row] = await db
+      .update(admissions)
+      .set({ paymentStatus: "paid", razorpayPaymentId, paidAt: new Date() })
+      .where(eq(admissions.id, parseInt(admissionId)))
+      .returning();
+    if (!row) return res.status(404).json({ error: "Admission not found" });
+
+    // Send notifications async
+    sendAdmissionNotifications({
+      studentName: row.studentName, ageGroup: row.ageGroup, parentName: row.parentName,
+      phone: row.phone, email: row.email ?? undefined, isTrial: row.isTrial,
+      trialDate: row.trialDate ?? undefined, school: row.school ?? undefined,
+      asthma: row.asthma, emergencyName: row.emergencyName, emergencyPhone: row.emergencyPhone,
+      dob: row.dob, address: row.address ?? undefined,
+      razorpayPaymentId: razorpayPaymentId, admissionId: row.id,
+    }).catch(() => {});
+
+    return res.json({ ok: true, ref: `ADM-${row.id}` });
+  }
+
+  // POST /admissions — create admission record + Razorpay order
   if (req.method === "POST") {
     const data = z.object({
       studentName: z.string().min(1), dob: z.string().min(1), ageGroup: z.string().min(1),
@@ -97,53 +201,69 @@ async function handleAdmissions(req: VercelRequest, res: VercelResponse, sub: st
       bloodGroup: z.string().optional(), allergies: z.string().optional(),
       asthma: z.boolean().default(false), medicalNotes: z.string().optional(),
       emergencyName: z.string().min(1), emergencyPhone: z.string().min(1),
+      consentMedical: z.boolean().default(false), consentPhoto: z.boolean().default(false),
+      consentLiability: z.boolean().default(false), consentTerms: z.boolean().default(false),
+      consentData: z.boolean().default(false),
       isTrial: z.boolean().default(false), trialDate: z.string().optional(),
       message: z.string().optional(), source: z.string().optional(),
+      packageMonths: z.number().int().nullable().optional(),
+      eligibilityDiscountPct: z.number().int().min(0).max(100).optional(),
     }).parse(req.body);
-    const [row] = await db.insert(admissions).values(data).returning();
 
-    // Send notifications
-    const adminEmail = process.env.ADMIN_EMAIL || "kumarindrajitcricket@gmail.com";
-    const adminPhone = process.env.ADMIN_PHONE || "7903053204";
-    const type = data.isTrial ? "Free Trial Session" : "Admission Application";
+    // Calculate amounts
+    const MONTHLY_FEE = 3500;
+    const KIT_FEE = 2000;
+    const REG_FEE = 5000;
+    const pkgMonths = data.packageMonths ?? null;
+    const pkgDiscount = pkgMonths === 3 ? 10 : pkgMonths === 6 ? 15 : pkgMonths === 12 ? 20 : 0;
+    const eligPct = data.eligibilityDiscountPct ?? 0;
+    const combinedPct = Math.min(pkgDiscount + eligPct, 90);
+    const monthlyTotal = pkgMonths ? Math.round(pkgMonths * MONTHLY_FEE * (1 - combinedPct / 100)) : 0;
+    const kitFee = pkgMonths ? KIT_FEE : 0;
+    const totalPaid = REG_FEE + kitFee + monthlyTotal;
 
-    const customerHtml = `
-      <div style="font-family:sans-serif;max-width:500px;margin:0 auto;background:#0a0f1e;color:#fff;border-radius:12px;overflow:hidden">
-        <div style="background:#eab308;padding:24px;text-align:center">
-          <h1 style="margin:0;color:#000;font-size:22px">PIR Cricket Academy</h1>
-          <p style="margin:4px 0 0;color:#000;font-size:14px">Application Received ✅</p>
-        </div>
-        <div style="padding:28px">
-          <p style="color:#94a3b8;margin:0 0 20px">Dear <strong style="color:#fff">${data.parentName}</strong>, we have received ${data.studentName}'s ${type}.</p>
-          <table style="width:100%;border-collapse:collapse">
-            ${[["Student",data.studentName],["Age Group",data.ageGroup],["Type",type],["Trial Date",data.trialDate||"—"],["Status","Under Review"]].map(([k,v])=>`<tr><td style="padding:8px 0;color:#94a3b8;border-bottom:1px solid #1e293b;font-size:14px">${k}</td><td style="padding:8px 0;color:#fff;border-bottom:1px solid #1e293b;font-size:14px;font-weight:bold;text-align:right">${v}</td></tr>`).join("")}
-          </table>
-          <p style="color:#94a3b8;margin:24px 0 0;font-size:13px">We will contact you on <strong style="color:#fff">${data.phone}</strong> within 24 hours. For queries, WhatsApp us at +91 ${adminPhone}</p>
-        </div>
-      </div>`;
+    const ip = (req.headers["x-forwarded-for"] as string || "").split(",")[0].trim() || "unknown";
+    const [row] = await db.insert(admissions).values({
+      ...data,
+      consentIp: ip,
+      paymentStatus: "pending",
+      registrationFee: REG_FEE,
+      packageMonths: pkgMonths,
+      packageDiscountPct: pkgDiscount,
+      eligibilityDiscountPct: eligPct,
+      combinedDiscountPct: combinedPct,
+      totalPaid,
+    }).returning();
 
-    const adminHtml = `
-      <div style="font-family:sans-serif;max-width:500px;margin:0 auto">
-        <h2 style="color:#eab308">🏏 New ${type} — PIR Cricket Academy</h2>
-        <table style="width:100%;border-collapse:collapse">
-          ${[["Student",data.studentName],["DOB",data.dob],["Age Group",data.ageGroup],["School",data.school||"—"],["Parent",data.parentName],["Phone",data.phone],["Email",data.email],["Address",data.address||"—"],["Trial",data.isTrial?"Yes — "+( data.trialDate||"date TBD"):"No"],["Asthma",data.asthma?"Yes":"No"],["Emergency",data.emergencyName+" / "+data.emergencyPhone]].map(([k,v])=>`<tr><td style="padding:6px 12px 6px 0;color:#666;font-size:14px">${k}</td><td style="padding:6px 0;font-weight:bold;font-size:14px">${v}</td></tr>`).join("")}
-        </table>
-      </div>`;
+    // Create Razorpay order
+    const keyId = process.env.RAZORPAY_KEY_ID || "";
+    const keySecret = process.env.RAZORPAY_KEY_SECRET || "";
+    if (!keyId || !keySecret) return res.status(500).json({ error: "Razorpay keys not configured" });
 
-    const adminWA = `🏏 *New ${type}!*\n\n👤 *Student:* ${data.studentName} (${data.ageGroup})\n👨 *Parent:* ${data.parentName}\n📞 *Phone:* ${data.phone}\n📧 *Email:* ${data.email}\n${data.isTrial ? `📅 *Trial Date:* ${data.trialDate||"TBD"}\n` : ""}🏫 *School:* ${data.school||"—"}\n⚠️ *Asthma:* ${data.asthma?"Yes":"No"}`;
-    const customerWA = `✅ *Application Received!*\n\nDear ${data.parentName}, we have received ${data.studentName}'s ${type} at PIR Cricket Academy.\n\nWe will contact you on ${data.phone} within 24 hours.\n\n🏏 PIR Cricket Academy — Patna`;
+    const auth = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
+    const orderRes = await fetch("https://api.razorpay.com/v1/orders", {
+      method: "POST",
+      headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ amount: totalPaid * 100, currency: "INR", receipt: `ADM-${row.id}` }),
+    });
+    if (!orderRes.ok) {
+      const err = await orderRes.text();
+      return res.status(500).json({ error: "Failed to create payment order", detail: err });
+    }
+    const order = await (orderRes.json() as Promise<{ id: string }>);
+    await db.update(admissions).set({ razorpayOrderId: order.id }).where(eq(admissions.id, row.id));
 
-    Promise.allSettled([
-      sendEmail(data.email, `Application Received — PIR Cricket Academy`, customerHtml),
-      sendEmail(adminEmail, `New ${type}: ${data.studentName} — PIR Cricket Academy`, adminHtml),
-      sendWhatsApp(data.phone, customerWA),
-      sendWhatsApp(adminPhone, adminWA),
-    ]).catch(() => {});
-
-    return res.status(201).json(row);
+    return res.status(201).json({
+      id: row.id, orderId: order.id, keyId, amount: totalPaid * 100, totalPaid,
+      studentName: data.studentName, parentName: data.parentName,
+      phone: data.phone, email: data.email,
+    });
   }
+
   if (req.method === "PATCH" && id && action === "status") {
-    const [row] = await db.update(admissions).set({ status: req.body.status }).where(eq(admissions.id, id)).returning();
+    try { requireAdmin(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
+    const { status } = z.object({ status: z.enum(["new","trial_scheduled","joined","rejected","withdrawn"]) }).parse(req.body);
+    const [row] = await db.update(admissions).set({ status }).where(eq(admissions.id, id)).returning();
     return res.json(row);
   }
   return res.status(405).json({ error: "Method not allowed" });
@@ -165,7 +285,7 @@ async function sendEmail(to: string, subject: string, html: string) {
   await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: "PIR Cricket Academy <onboarding@resend.dev>", to, subject, html }),
+    body: JSON.stringify({ from: process.env.RESEND_FROM_EMAIL || "PIR Cricket Academy <onboarding@resend.dev>", to, subject, html }),
   });
 }
 
@@ -249,8 +369,9 @@ async function handleBookings(req: VercelRequest, res: VercelResponse, sub: stri
     return res.json({ bookedSlots: Array.from(bookedSlots) });
   }
 
-  // GET /api/bookings?date=YYYY-MM-DD  — receptionist tracker
+  // GET /api/bookings?date=YYYY-MM-DD  — receptionist tracker (admin only)
   if (req.method === "GET") {
+    try { requireAdmin(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
     const { date } = req.query;
     const all = date
       ? await db.select().from(bookings).where(eq(bookings.date, date as string))
@@ -329,7 +450,9 @@ async function handleBookings(req: VercelRequest, res: VercelResponse, sub: stri
 
   // PATCH /api/bookings/:id/status
   if (req.method === "PATCH" && id && action === "status") {
-    const [row] = await db.update(bookings).set({ status: req.body.status }).where(eq(bookings.id, id)).returning();
+    try { requireAdmin(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
+    const { status } = z.object({ status: z.enum(["pending_payment","confirmed","cancelled","refunded"]) }).parse(req.body);
+    const [row] = await db.update(bookings).set({ status }).where(eq(bookings.id, id)).returning();
     return res.json(row);
   }
 
@@ -343,6 +466,7 @@ async function handleBatches(req: VercelRequest, res: VercelResponse, sub: strin
     return res.json(await db.select().from(batches).orderBy(batches.name));
   }
   if (req.method === "POST") {
+    try { requireAdmin(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
     const data = z.object({
       name: z.string().min(1), ageGroup: z.string().min(1),
       schedule: z.string().min(1), coachName: z.string().min(1),
@@ -352,7 +476,13 @@ async function handleBatches(req: VercelRequest, res: VercelResponse, sub: strin
     return res.status(201).json(row);
   }
   if (req.method === "PATCH" && id) {
-    const [row] = await db.update(batches).set(req.body).where(eq(batches.id, id)).returning();
+    try { requireAdmin(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
+    const data = z.object({
+      name: z.string().min(1).optional(), ageGroup: z.string().optional(),
+      schedule: z.string().optional(), coachName: z.string().optional(),
+      maxStudents: z.number().int().positive().optional(), isActive: z.boolean().optional(),
+    }).parse(req.body);
+    const [row] = await db.update(batches).set(data).where(eq(batches.id, id)).returning();
     return res.json(row);
   }
   return res.status(405).json({ error: "Method not allowed" });
@@ -360,6 +490,7 @@ async function handleBatches(req: VercelRequest, res: VercelResponse, sub: strin
 
 // ── Students ───────────────────────────────────────────────────────────────────
 async function handleStudents(req: VercelRequest, res: VercelResponse, sub: string[]) {
+  try { requireAdmin(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
   const id = sub[0] ? parseInt(sub[0]) : null;
   if (req.method === "GET") {
     const all = await db.select({ student: students, batch: batches })
@@ -379,7 +510,14 @@ async function handleStudents(req: VercelRequest, res: VercelResponse, sub: stri
     return res.status(201).json(row);
   }
   if (req.method === "PATCH" && id) {
-    const [row] = await db.update(students).set(req.body).where(eq(students.id, id)).returning();
+    const data = z.object({
+      name: z.string().min(1).optional(), dob: z.string().optional(),
+      ageGroup: z.string().optional(), batchId: z.number().int().positive().optional().nullable(),
+      parentName: z.string().optional(), phone: z.string().optional(),
+      email: z.string().optional(), address: z.string().optional(),
+      bloodGroup: z.string().optional(), status: z.string().optional(),
+    }).parse(req.body);
+    const [row] = await db.update(students).set(data).where(eq(students.id, id)).returning();
     return res.json(row);
   }
   return res.status(405).json({ error: "Method not allowed" });
@@ -387,6 +525,7 @@ async function handleStudents(req: VercelRequest, res: VercelResponse, sub: stri
 
 // ── Attendance ─────────────────────────────────────────────────────────────────
 async function handleAttendance(req: VercelRequest, res: VercelResponse) {
+  try { requireStaff(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
   if (req.method === "GET") {
     const { date } = req.query as Record<string, string>;
     const all = await db.select({ record: attendance, student: students, batch: batches })
@@ -422,6 +561,7 @@ async function handleAttendance(req: VercelRequest, res: VercelResponse) {
 
 // ── Session Notes ──────────────────────────────────────────────────────────────
 async function handleSessionNotes(req: VercelRequest, res: VercelResponse) {
+  try { requireStaff(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
   if (req.method === "GET") {
     const { batchId } = req.query as Record<string, string>;
     const all = batchId
@@ -444,6 +584,7 @@ async function handleSessionNotes(req: VercelRequest, res: VercelResponse) {
 
 // ── Player Ratings ─────────────────────────────────────────────────────────────
 async function handlePlayerRatings(req: VercelRequest, res: VercelResponse) {
+  try { requireStaff(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
   if (req.method === "GET") {
     const { studentId, batchId } = req.query as Record<string, string>;
     let all = await db.select({ rating: playerRatings, student: students })
@@ -471,7 +612,11 @@ async function handlePlayerRatings(req: VercelRequest, res: VercelResponse) {
 
 // ── Fees ───────────────────────────────────────────────────────────────────────
 async function handleFees(req: VercelRequest, res: VercelResponse, sub: string[]) {
-  const id = sub[0] ? parseInt(sub[0]) : null;
+  try { requireAdmin(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
+  const isBulkRemind = sub[0] === "bulk-remind";
+  const id = (!isBulkRemind && sub[0]) ? parseInt(sub[0]) : null;
+  const action = sub[1]; // e.g. "remind"
+
   if (req.method === "GET") {
     const { studentId } = req.query as Record<string, string>;
     if (studentId) {
@@ -479,28 +624,78 @@ async function handleFees(req: VercelRequest, res: VercelResponse, sub: string[]
       return res.json(all.reverse());
     }
     const all = await db.select({ fee: fees, student: students })
-      .from(fees).leftJoin(students, eq(fees.studentId, students.id)).orderBy(fees.month);
+      .from(fees).leftJoin(students, eq(fees.studentId, students.id)).orderBy(fees.createdAt);
     return res.json(all.reverse());
   }
+
+  if (req.method === "POST" && id && action === "remind") {
+    // Send WhatsApp reminder for a specific fee
+    const [row] = await db.select({ fee: fees, student: students })
+      .from(fees).leftJoin(students, eq(fees.studentId, students.id)).where(eq(fees.id, id));
+    if (!row) return res.status(404).json({ error: "Fee not found" });
+    const { fee, student } = row;
+    if (!student) return res.status(404).json({ error: "Student not found" });
+    const adminPhone = process.env.ADMIN_PHONE || "7903053204";
+    const msg = `⚠️ *Fee Reminder — PIR Cricket Academy*\n\nDear Parent,\n\n📋 *Student:* ${student.name}\n💰 *Amount Due:* ₹${(fee.amount - fee.paidAmount).toLocaleString("en-IN")}\n📅 *Due Date:* ${fee.dueDate || "Please pay soon"}\n📌 *Type:* ${fee.feeType}\n\nPlease clear this payment at your earliest. For queries, contact us on +91 ${adminPhone}.\n\n🏏 PIR Cricket Academy — Patna`;
+    await sendWhatsApp(student.phone, msg);
+    return res.json({ ok: true });
+  }
+
+  if (req.method === "POST" && isBulkRemind) {
+    // Send reminders to all overdue/due students
+    const today = new Date().toISOString().split("T")[0];
+    const all = await db.select({ fee: fees, student: students })
+      .from(fees).leftJoin(students, eq(fees.studentId, students.id));
+    const overdue = all.filter(r => !r.fee.paid && r.student);
+    const adminPhone = process.env.ADMIN_PHONE || "7903053204";
+    await Promise.allSettled(overdue.map(({ fee, student }) => {
+      const msg = `⚠️ *Fee Reminder — PIR Cricket Academy*\n\nDear Parent,\n\n📋 *Student:* ${student!.name}\n💰 *Amount Due:* ₹${(fee.amount - fee.paidAmount).toLocaleString("en-IN")}\n📅 *Due Date:* ${fee.dueDate || "Overdue"}\n\nKindly clear this payment immediately. Contact: +91 ${adminPhone}\n\n🏏 PIR Cricket Academy`;
+      return sendWhatsApp(student!.phone, msg);
+    }));
+    return res.json({ sent: overdue.length });
+  }
+
   if (req.method === "POST") {
     const data = z.object({
-      studentId: z.number().int().positive(), month: z.string().min(1),
-      amount: z.number().int().positive(), paid: z.boolean().default(false),
-      paidDate: z.string().optional().nullable(), receiptNo: z.string().optional().nullable(),
+      studentId: z.number().int().positive(),
+      feeType: z.enum(["monthly","admission","quarterly","annual","camp","tournament"]).default("monthly"),
+      month: z.string().min(1),
+      amount: z.number().int().positive(),
+      paidAmount: z.number().int().min(0).default(0),
+      paid: z.boolean().default(false),
+      dueDate: z.string().optional().nullable(),
+      paidDate: z.string().optional().nullable(),
+      receiptNo: z.string().optional().nullable(),
       notes: z.string().optional().nullable(),
     }).parse(req.body);
     const [row] = await db.insert(fees).values(data).returning();
     return res.status(201).json(row);
   }
+
   if (req.method === "PATCH" && id) {
-    const [row] = await db.update(fees).set(req.body).where(eq(fees.id, id)).returning();
+    const data = z.object({
+      paid: z.boolean().optional(),
+      paidAmount: z.number().int().min(0).optional(),
+      paidDate: z.string().optional().nullable(),
+      receiptNo: z.string().optional().nullable(),
+      notes: z.string().optional().nullable(),
+      dueDate: z.string().optional().nullable(),
+    }).partial().parse(req.body);
+    const [row] = await db.update(fees).set(data).where(eq(fees.id, id)).returning();
     return res.json(row);
   }
+
+  if (req.method === "DELETE" && id) {
+    await db.delete(fees).where(eq(fees.id, id));
+    return res.json({ ok: true });
+  }
+
   return res.status(405).json({ error: "Method not allowed" });
 }
 
 // ── Notifications ──────────────────────────────────────────────────────────────
 async function handleNotifications(req: VercelRequest, res: VercelResponse) {
+  try { requireAdmin(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
   if (req.method === "GET") {
     const all = await db.select().from(notifications).orderBy(notifications.createdAt);
     return res.json(all.reverse());
@@ -526,17 +721,51 @@ async function handleParent(req: VercelRequest, res: VercelResponse) {
   if (studentList.length === 0) return res.status(404).json({ error: "No students found for this phone number" });
   const studentIds = studentList.map(r => r.student.id);
   const [attRecs, feeRecs, ratingRecs, noticeList] = await Promise.all([
-    db.select().from(attendance).orderBy(attendance.sessionDate),
-    db.select().from(fees),
-    db.select().from(playerRatings).orderBy(playerRatings.sessionDate),
+    db.select().from(attendance).where(inArray(attendance.studentId, studentIds)).orderBy(attendance.sessionDate),
+    db.select().from(fees).where(inArray(fees.studentId, studentIds)),
+    db.select().from(playerRatings).where(inArray(playerRatings.studentId, studentIds)).orderBy(playerRatings.sessionDate),
     db.select().from(notifications).orderBy(notifications.createdAt),
   ]);
   return res.json({
     students: studentList,
-    attendance: attRecs.filter(r => studentIds.includes(r.studentId)).reverse().slice(0, 30),
-    fees: feeRecs.filter(r => studentIds.includes(r.studentId)),
-    ratings: ratingRecs.filter(r => studentIds.includes(r.studentId)).reverse().slice(0, 10),
+    attendance: attRecs.reverse().slice(0, 30),
+    fees: feeRecs,
+    ratings: ratingRecs.reverse().slice(0, 10),
     notices: noticeList.slice(0, 5),
+  });
+}
+
+// ── Student Portal ────────────────────────────────────────────────────────────
+async function handleStudentPortal(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
+  const { phone } = req.query as Record<string, string>;
+  if (!phone) return res.status(400).json({ error: "phone required" });
+  const [row] = await db.select({ student: students, batch: batches })
+    .from(students).leftJoin(batches, eq(students.batchId, batches.id)).where(eq(students.phone, phone));
+  if (!row) return res.status(404).json({ error: "No student found for this phone number" });
+  const sid = row.student.id;
+  const [attRecs, feeRecs, ratingRecs, noticeList] = await Promise.all([
+    db.select().from(attendance).where(eq(attendance.studentId, sid)).orderBy(attendance.sessionDate),
+    db.select().from(fees).where(eq(fees.studentId, sid)).orderBy(fees.createdAt),
+    db.select().from(playerRatings).where(eq(playerRatings.studentId, sid)).orderBy(playerRatings.sessionDate),
+    db.select().from(notifications).orderBy(notifications.createdAt),
+  ]);
+  const present = attRecs.filter(a => a.status === "present" || a.status === "late").length;
+  const paidFees = feeRecs.filter(f => f.paid).reduce((s, f) => s + f.amount, 0);
+  const pendingFees = feeRecs.filter(f => !f.paid).reduce((s, f) => s + (f.amount - f.paidAmount), 0);
+  return res.json({
+    student: row.student,
+    batch: row.batch,
+    attendance: attRecs.reverse().slice(0, 30),
+    fees: feeRecs.reverse(),
+    ratings: ratingRecs.reverse().slice(0, 10),
+    notices: noticeList.slice(0, 10),
+    stats: {
+      totalSessions: attRecs.length,
+      presentCount: present,
+      attendancePct: attRecs.length ? Math.round((present / attRecs.length) * 100) : 0,
+      paidFees, pendingFees,
+    },
   });
 }
 
@@ -551,6 +780,7 @@ const DEFAULT_TEMPLATES = [
 ];
 
 async function handleTemplates(req: VercelRequest, res: VercelResponse) {
+  try { requireAdmin(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
   if (req.method === "GET") {
     let all = await db.select().from(messageTemplates).orderBy(messageTemplates.category);
     if (all.length === 0) {
@@ -581,6 +811,7 @@ function resolveVars(template: string, vars: Record<string, string>) {
 }
 
 async function handleCampaigns(req: VercelRequest, res: VercelResponse) {
+  try { requireAdmin(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
   if (req.method === "GET") {
     const { preview, audience, message } = req.query as Record<string, string>;
     if (preview === "1" && audience && message) {
@@ -625,6 +856,9 @@ async function handleCampaigns(req: VercelRequest, res: VercelResponse) {
 
 // ── Events ─────────────────────────────────────────────────────────────────────
 async function handleEvents(req: VercelRequest, res: VercelResponse) {
+  if (req.method !== "GET") {
+    try { requireAdmin(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
+  }
   if (req.method === "GET") {
     const { month, date } = req.query as Record<string, string>;
     let all = await db.select({ event: events, batch: batches })
@@ -660,10 +894,201 @@ async function handleEvents(req: VercelRequest, res: VercelResponse) {
   return res.status(405).json({ error: "Method not allowed" });
 }
 
+// ── Users (coach account management) ──────────────────────────────────────────
+async function handleUsers(req: VercelRequest, res: VercelResponse) {
+  try { requireAdmin(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
+
+  if (req.method === "GET") {
+    const all = await db.select({ id: users.id, username: users.username, role: users.role, name: users.name, createdAt: users.createdAt })
+      .from(users).orderBy(users.createdAt);
+    return res.json(all);
+  }
+  if (req.method === "POST") {
+    const data = z.object({
+      username: z.string().min(3), password: z.string().min(6),
+      name: z.string().min(1), role: z.enum(["coach", "admin"]),
+    }).parse(req.body);
+    const existing = await db.select().from(users).where(eq(users.username, data.username));
+    if (existing.length > 0) return res.status(409).json({ error: "Username already exists" });
+    const passwordHash = await bcrypt.hash(data.password, 10);
+    const [row] = await db.insert(users).values({ username: data.username, passwordHash, name: data.name, role: data.role }).returning({
+      id: users.id, username: users.username, role: users.role, name: users.name, createdAt: users.createdAt,
+    });
+    return res.status(201).json(row);
+  }
+  if (req.method === "DELETE") {
+    const { id } = req.query as Record<string, string>;
+    if (!id) return res.status(400).json({ error: "id required" });
+    const [user] = await db.select().from(users).where(eq(users.id, parseInt(id)));
+    if (user?.username === "admin") return res.status(403).json({ error: "Cannot delete super admin" });
+    await db.delete(users).where(eq(users.id, parseInt(id)));
+    return res.json({ ok: true });
+  }
+  return res.status(405).json({ error: "Method not allowed" });
+}
+
+// ── Discount Types (admin CRUD) ───────────────────────────────────────────────
+export async function handleDiscountTypes(req: VercelRequest, res: VercelResponse) {
+  if (req.method === "GET") {
+    const all = await db.select().from(discountTypes).orderBy(discountTypes.id);
+    return res.json(all);
+  }
+  if (req.method === "POST") {
+    requireAdmin(req);
+    const data = z.object({
+      name: z.string().min(1),
+      percentage: z.number().int().min(1).max(100),
+      description: z.string().min(1),
+      requiredDocument: z.string().min(1),
+      isActive: z.boolean().default(true),
+    }).parse(req.body);
+    const [row] = await db.insert(discountTypes).values(data).returning();
+    return res.status(201).json(row);
+  }
+  if (req.method === "PATCH") {
+    requireAdmin(req);
+    const [, id] = (Array.isArray(req.query._p) ? req.query._p[0] : req.query._p ?? "").split("/");
+    if (!id) return res.status(400).json({ error: "id required" });
+    const data = z.object({
+      name: z.string().min(1).optional(),
+      percentage: z.number().int().min(1).max(100).optional(),
+      description: z.string().min(1).optional(),
+      requiredDocument: z.string().min(1).optional(),
+      isActive: z.boolean().optional(),
+    }).parse(req.body);
+    const [row] = await db.update(discountTypes).set(data).where(eq(discountTypes.id, parseInt(id))).returning();
+    return res.json(row);
+  }
+  if (req.method === "DELETE") {
+    requireAdmin(req);
+    const [, id] = (Array.isArray(req.query._p) ? req.query._p[0] : req.query._p ?? "").split("/");
+    if (!id) return res.status(400).json({ error: "id required" });
+    await db.delete(discountTypes).where(eq(discountTypes.id, parseInt(id)));
+    return res.json({ ok: true });
+  }
+  return res.status(405).json({ error: "Method not allowed" });
+}
+
+// ── Discount Applications (student applies, admin approves) ───────────────────
+export async function handleDiscountApplications(req: VercelRequest, res: VercelResponse) {
+  if (req.method === "GET") {
+    requireStaff(req);
+    const rows = await db.select().from(discountApplications).orderBy(discountApplications.createdAt);
+    return res.json(rows);
+  }
+  if (req.method === "POST") {
+    // Public — student submits application
+    const data = z.object({
+      studentId: z.number().int().positive(),
+      discountTypeId: z.number().int().positive(),
+      documentUrl: z.string().optional(),
+      documentName: z.string().optional(),
+    }).parse(req.body);
+    // Only one discount allowed per student at any time (pending or approved)
+    const existing = await db.select().from(discountApplications)
+      .where(eq(discountApplications.studentId, data.studentId));
+    const active = existing.find(a => a.status === "pending" || a.status === "approved");
+    if (active) return res.status(409).json({ error: "Only one discount is applicable at a time. This student already has an active discount application." });
+    // Pre-opening discount (id=4) is auto-approved — no document review needed
+    const PRE_OPENING_ID = 4;
+    const PRE_OPENING_DEADLINE = new Date("2026-08-20");
+    const isAutoApprove = data.discountTypeId === PRE_OPENING_ID && new Date() < PRE_OPENING_DEADLINE;
+    const status = isAutoApprove ? "approved" : "pending";
+    const [row] = await db.insert(discountApplications).values({
+      ...data,
+      status,
+      ...(isAutoApprove ? { reviewNotes: "Auto-approved: Pre-Opening Founding Batch discount (date verified)", reviewedBy: "system", reviewedAt: new Date() } : {}),
+    }).returning();
+    return res.status(201).json(row);
+  }
+  if (req.method === "PATCH") {
+    const claims = requireAdmin(req);
+    const [, id] = (Array.isArray(req.query._p) ? req.query._p[0] : req.query._p ?? "").split("/");
+    if (!id) return res.status(400).json({ error: "id required" });
+    const data = z.object({
+      status: z.enum(["approved", "rejected"]),
+      reviewNotes: z.string().optional(),
+    }).parse(req.body);
+    const [row] = await db.update(discountApplications).set({
+      status: data.status,
+      reviewNotes: data.reviewNotes,
+      reviewedBy: claims.username,
+      reviewedAt: new Date(),
+    }).where(eq(discountApplications.id, parseInt(id))).returning();
+
+    // If approved, add a discount fee credit entry for the student
+    if (data.status === "approved") {
+      const [app] = await db.select().from(discountApplications).where(eq(discountApplications.id, parseInt(id)));
+      const [dtype] = await db.select().from(discountTypes).where(eq(discountTypes.id, app.discountTypeId));
+      // Find the latest unpaid tuition fee for this student
+      const studentFees = await db.select().from(fees)
+        .where(eq(fees.studentId, app.studentId));
+      const tuitionFee = studentFees.find(f => f.feeType === "monthly" && !f.paid);
+      if (tuitionFee && dtype) {
+        const discountAmt = Math.round((tuitionFee.amount * dtype.percentage) / 100);
+        // Record as a note on the fee
+        await db.update(fees).set({
+          notes: `${dtype.percentage}% ${dtype.name} discount applied (-₹${discountAmt}). Payable: ₹${tuitionFee.amount - discountAmt}`,
+          amount: tuitionFee.amount - discountAmt,
+        }).where(eq(fees.id, tuitionFee.id));
+      }
+    }
+    return res.json(row);
+  }
+  return res.status(405).json({ error: "Method not allowed" });
+}
+
+// ── Password Reset ─────────────────────────────────────────────────────────────
+export async function handlePasswordReset(req: VercelRequest, res: VercelResponse, sub: string[]) {
+  const action = sub[0];
+
+  // POST /api/password-reset/request — send reset email
+  if (action === "request" && req.method === "POST") {
+    const { username } = z.object({ username: z.string().min(1) }).parse(req.body);
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    // Always return success to avoid username enumeration
+    if (!user) return res.json({ ok: true });
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    await db.insert(passwordResets).values({ username, token, expiresAt });
+    const resetUrl = `${process.env.FRONTEND_URL || "https://pircricketacademy.co.in"}/admin?reset=${token}`;
+    const adminEmail = process.env.ADMIN_EMAIL || "kumarindrajitcricket@gmail.com";
+    await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: process.env.RESEND_FROM_EMAIL || "PIR Cricket Academy <onboarding@resend.dev>",
+        to: adminEmail,
+        subject: "PIRcricketHub — Admin Password Reset",
+        html: `<p>Hi ${user.name},</p><p>Click the link below to reset your admin password. This link expires in 1 hour.</p><p><a href="${resetUrl}" style="background:#eab308;color:#000;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">Reset Password</a></p><p>If you did not request this, ignore this email.</p>`,
+      }),
+    });
+    return res.json({ ok: true });
+  }
+
+  // POST /api/password-reset/confirm — set new password using token
+  if (action === "confirm" && req.method === "POST") {
+    const { token, password } = z.object({
+      token: z.string().min(1),
+      password: z.string().min(8),
+    }).parse(req.body);
+    const [reset] = await db.select().from(passwordResets).where(eq(passwordResets.token, token));
+    if (!reset) return res.status(400).json({ error: "Invalid or expired reset link" });
+    if (reset.usedAt) return res.status(400).json({ error: "Reset link already used" });
+    if (new Date() > reset.expiresAt) return res.status(400).json({ error: "Reset link has expired" });
+    const passwordHash = await bcrypt.hash(password, 10);
+    await db.update(users).set({ passwordHash }).where(eq(users.username, reset.username));
+    await db.update(passwordResets).set({ usedAt: new Date() }).where(eq(passwordResets.token, token));
+    return res.json({ ok: true });
+  }
+
+  return res.status(404).json({ error: "Not found" });
+}
+
 // Named exports for use by router.ts
 export {
   handleAuth, handleInquiries, handleFollowUps, handleAdmissions,
   handleBookings, handleBatches, handleStudents, handleAttendance,
   handleSessionNotes, handlePlayerRatings, handleFees, handleNotifications,
-  handleParent, handleTemplates, handleCampaigns, handleEvents,
+  handleParent, handleStudentPortal, handleTemplates, handleCampaigns, handleEvents, handleUsers,
 };

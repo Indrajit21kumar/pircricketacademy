@@ -1,5 +1,5 @@
 const items = [
-  "🏏 PIR Cricket Academy launching August/September 2026 in Patna",
+  "🏏 PIRcricketHub launching August/September 2026 in Patna",
   "🌟 From the Soil of Bihar, to the Stadiums of India",
   "🔥 PRE-LAUNCH OFFER: 25% OFF Admission Fee — Register Before 20 August 2026",
   "🎯 Early Admissions Open — Limited Founding Batch Seats",
@@ -13,7 +13,7 @@ const items = [
 export default function AnnouncementBar() {
   const repeated = [...items, ...items];
   return (
-    <div className="bg-secondary text-secondary-foreground py-2 overflow-hidden relative z-40">
+    <div className="fixed top-0 inset-x-0 bg-secondary text-secondary-foreground py-2 overflow-hidden z-[60]">
       <div className="flex whitespace-nowrap animate-ticker">
         {repeated.map((msg, i) => (
           <span key={i} className="inline-flex items-center shrink-0 px-8 text-sm font-semibold">

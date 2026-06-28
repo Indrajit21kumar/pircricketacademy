@@ -65,7 +65,7 @@ export default function ScanPage() {
             <QrCode className="h-8 w-8 text-yellow-400" />
           </div>
           <h1 className="text-2xl font-bold mb-1">QR Attendance</h1>
-          <p className="text-gray-400 text-sm">PIR Cricket Academy</p>
+          <p className="text-gray-400 text-sm">PIRcricketHub</p>
         </div>
 
         {/* Today counter */}

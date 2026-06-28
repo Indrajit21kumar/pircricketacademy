@@ -1,196 +1,333 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Calendar, TrendingUp, DollarSign, Bell, ChevronRight, X } from "lucide-react";
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
+import { Calendar, TrendingUp, DollarSign, Bell, QrCode, CheckCircle, XCircle, Clock, AlertCircle, Star, IndianRupee } from "lucide-react";
+import QRCode from "qrcode";
 
-const MOCK_STUDENT = {
-  id:"PIR001", name:"Arjun Kumar", batch:"U12 Morning", level:"Foundation",
-  coach:"Coach Ravi", joinDate:"Jan 2026", phone:"98765 43210",
-  attendance:[
-    {month:"June 2026", present:11, total:13, pct:"84%"},
-    {month:"May 2026", present:14, total:15, pct:"93%"},
-    {month:"April 2026", present:13, total:14, pct:"92%"},
-  ],
-  fees:[
-    {month:"June 2026", amount:"₹3,500", status:"Due", dueDate:"Jun 30"},
-    {month:"May 2026", amount:"₹3,500", status:"Paid", paidOn:"May 5"},
-    {month:"April 2026", amount:"₹3,500", status:"Paid", paidOn:"Apr 3"},
-  ],
-  performance:[
-    {skill:"Batting", rating:3, max:5, note:"Good timing, work on footwork"},
-    {skill:"Bowling", rating:4, max:5, note:"Consistent line and length"},
-    {skill:"Fielding", rating:3, max:5, note:"Improving catching"},
-    {skill:"Fitness", rating:4, max:5, note:"Excellent stamina"},
-  ],
-  notifications:[
-    {type:"fee", msg:"June fee of ₹3,500 is due by June 30", time:"2 days ago", urgent:true},
-    {type:"session", msg:"Tomorrow: Batting drills + match simulation · 7:00–8:30 AM", time:"5 hours ago", urgent:false},
-    {type:"attend", msg:"Attendance marked: Present — Jun 22, 2026", time:"Yesterday", urgent:false},
-  ]
-};
-
-export default function Student() {
-  const [auth, setAuth] = useState(false);
+// ─── Login ────────────────────────────────────────────────────────────────────
+function LoginScreen({ onLogin }: { onLogin: (data: any) => void }) {
   const [phone, setPhone] = useState("");
-  const [otp, setOtp] = useState("");
-  const [step, setStep] = useState<"phone"|"otp">("phone");
-  const [tab, setTab] = useState("Overview");
-  const s = MOCK_STUDENT;
+  const [loading, setLoading] = useState(false);
+  const [error, setError]   = useState("");
 
-  const sendOtp = (e: React.FormEvent) => { e.preventDefault(); setStep("otp"); };
-  const verify = (e: React.FormEvent) => { e.preventDefault(); if (otp==="1234") setAuth(true); };
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault(); setLoading(true); setError("");
+    try {
+      const res = await fetch(`/api/student-portal?phone=${encodeURIComponent(phone.trim())}`);
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Not found"); }
+      onLogin(await res.json());
+    } catch (err: any) { setError(err.message); }
+    finally { setLoading(false); }
+  };
 
-  if (!auth) return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4">
-      <motion.div initial={{opacity:0,y:30}} animate={{opacity:1,y:0}} className="bg-card border border-border rounded-2xl p-10 w-full max-w-sm">
+  return (
+    <div className="min-h-screen bg-[#0a0f1e] flex items-center justify-center p-4">
+      <motion.div initial={{opacity:0,y:30}} animate={{opacity:1,y:0}} className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-secondary/10 border-2 border-secondary/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <span className="font-display text-secondary text-2xl font-black">PIR</span>
+          <div className="w-16 h-16 bg-yellow-500/10 border-2 border-yellow-500/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <span className="font-bold text-yellow-400 text-2xl">PIR</span>
           </div>
-          <h1 className="font-display text-2xl font-bold">Student Portal</h1>
-          <p className="text-muted-foreground text-sm mt-1">Login with your registered phone number</p>
+          <h1 className="text-2xl font-bold text-white mb-1">Student Portal</h1>
+          <p className="text-gray-400 text-sm">PIRcricketHub</p>
         </div>
-        {step==="phone" ? (
-          <form onSubmit={sendOtp} className="space-y-4">
-            <div><label className="label">Phone Number</label>
-              <input required value={phone} onChange={e=>setPhone(e.target.value)} className="inp" placeholder="+91 98765 43210"/>
+        <form onSubmit={submit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1.5">Registered Phone Number</label>
+            <input required type="tel" value={phone} onChange={e => setPhone(e.target.value)}
+              className="w-full bg-[#0d1529] border border-gray-700 rounded-xl px-4 py-3 text-white text-base focus:outline-none focus:border-yellow-500"
+              placeholder="+91 98765 43210" />
+          </div>
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-red-400 shrink-0" />
+              <p className="text-red-400 text-sm">{error}</p>
             </div>
-            <button type="submit" className="w-full bg-secondary text-secondary-foreground font-bold uppercase py-3.5 rounded-xl hover:bg-secondary/90">Send OTP</button>
-          </form>
-        ) : (
-          <form onSubmit={verify} className="space-y-4">
-            <p className="text-center text-sm text-muted-foreground">OTP sent to <strong className="text-foreground">{phone}</strong></p>
-            <div><label className="label">Enter OTP</label>
-              <input required value={otp} onChange={e=>setOtp(e.target.value)} className="inp text-center text-2xl tracking-widest font-mono" placeholder="• • • •" maxLength={4}/>
-            </div>
-            <button type="submit" className="w-full bg-secondary text-secondary-foreground font-bold uppercase py-3.5 rounded-xl hover:bg-secondary/90">Verify & Login</button>
-            <button type="button" onClick={()=>setStep("phone")} className="w-full text-sm text-muted-foreground hover:text-foreground">← Change number</button>
-          </form>
-        )}
-        <p className="text-center text-muted-foreground text-xs mt-6">Demo: enter any phone → OTP: <span className="text-secondary font-mono">1234</span></p>
+          )}
+          <button type="submit" disabled={loading}
+            className="w-full bg-yellow-500 text-black font-bold py-3.5 rounded-xl hover:bg-yellow-400 transition-colors disabled:opacity-60">
+            {loading ? "Searching..." : "View My Progress"}
+          </button>
+        </form>
+        <p className="text-center text-gray-600 text-xs mt-6">
+          Use the phone number registered with the academy.<br />
+          <a href="https://wa.me/918936061688" target="_blank" rel="noreferrer" className="text-yellow-500 hover:text-yellow-400">Contact academy</a> if you need help.
+        </p>
       </motion.div>
     </div>
   );
+}
+
+// ─── QR Card ─────────────────────────────────────────────────────────────────
+function QRCard({ student }: { student: any }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (canvasRef.current && student.qrToken) {
+      QRCode.toCanvas(canvasRef.current, student.qrToken, {
+        width: 220, margin: 2,
+        color: { dark: "#0a0f1e", light: "#ffffff" },
+      });
+    }
+  }, [student.qrToken]);
+
+  const download = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const link = document.createElement("a");
+    link.download = `qr-${student.name.replace(/\s+/g, "-")}.png`;
+    link.href = canvas.toDataURL();
+    link.click();
+  };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="bg-card border-b border-border sticky top-0 z-40">
-        <div className="container mx-auto px-4 flex items-center justify-between h-16">
-          <div className="flex items-center gap-3">
-            <span className="font-display text-secondary font-black text-xl">PIR</span>
-            <span className="text-muted-foreground text-sm">Student Portal</span>
-          </div>
-          <button onClick={()=>setAuth(false)} className="text-xs text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 flex items-center gap-1"><X className="h-3 w-3"/> Sign out</button>
+    <div className="bg-[#0a0f1e] border border-gray-800 rounded-2xl p-6 text-center">
+      <div className="flex items-center gap-2 justify-center mb-4">
+        <QrCode className="h-5 w-5 text-yellow-400" />
+        <p className="font-bold text-white">My Attendance QR</p>
+      </div>
+      <p className="text-xs text-gray-500 mb-4">Show this to your coach at the start of each session</p>
+      <div className="flex justify-center mb-4">
+        <canvas ref={canvasRef} className="rounded-xl" />
+      </div>
+      <p className="text-xs font-mono text-gray-600 mb-4 break-all">{student.qrToken}</p>
+      <button onClick={download}
+        className="w-full flex items-center justify-center gap-2 bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 font-bold py-2.5 rounded-xl hover:bg-yellow-500/20 text-sm transition-colors">
+        <QrCode className="h-4 w-4" /> Download QR
+      </button>
+    </div>
+  );
+}
+
+// ─── Attendance Tab ───────────────────────────────────────────────────────────
+function AttendanceTab({ attendance, stats }: { attendance: any[]; stats: any }) {
+  const icon: Record<string,any> = {
+    present: <CheckCircle className="h-4 w-4 text-green-400" />,
+    late:    <Clock className="h-4 w-4 text-yellow-400" />,
+    absent:  <XCircle className="h-4 w-4 text-red-400" />,
+  };
+  const color: Record<string,string> = { present:"text-green-400", late:"text-yellow-400", absent:"text-red-400" };
+  const pctColor = stats.attendancePct >= 75 ? "text-green-400" : "text-red-400";
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-[#0a0f1e] border border-gray-800 rounded-xl p-4 text-center">
+          <p className={`text-2xl font-bold ${pctColor}`}>{stats.attendancePct}%</p>
+          <p className="text-xs text-gray-500 mt-1">Attendance</p>
         </div>
-        <div className="container mx-auto px-4 flex gap-1 overflow-x-auto">
-          {["Overview","Attendance","Performance","Fees"].map(t=>(
-            <button key={t} onClick={()=>setTab(t)} className={`px-4 py-3 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${tab===t?"border-secondary text-secondary":"border-transparent text-muted-foreground hover:text-foreground"}`}>{t}</button>
+        <div className="bg-[#0a0f1e] border border-gray-800 rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-white">{stats.presentCount}</p>
+          <p className="text-xs text-gray-500 mt-1">Present</p>
+        </div>
+        <div className="bg-[#0a0f1e] border border-gray-800 rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-white">{stats.totalSessions}</p>
+          <p className="text-xs text-gray-500 mt-1">Total</p>
+        </div>
+      </div>
+      {stats.attendancePct < 75 && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
+          <div><p className="font-bold text-red-400 text-sm">Low Attendance</p><p className="text-xs text-gray-400 mt-0.5">Below 75%. Please attend regularly.</p></div>
+        </div>
+      )}
+      {attendance.length === 0
+        ? <div className="text-center py-10 text-gray-500"><Calendar className="h-8 w-8 mx-auto mb-2 opacity-30" /><p>No records yet.</p></div>
+        : <div className="space-y-2">
+            {attendance.map(a => (
+              <div key={a.id} className="bg-[#0a0f1e] border border-gray-800 rounded-xl px-4 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  {icon[a.status] || icon.absent}
+                  <div>
+                    <p className="text-sm font-bold text-white">{a.sessionDate}</p>
+                    <p className="text-xs text-gray-500">Marked by {a.markedBy}</p>
+                  </div>
+                </div>
+                <span className={`text-xs font-bold capitalize ${color[a.status] || "text-gray-400"}`}>{a.status}</span>
+              </div>
+            ))}
+          </div>
+      }
+    </div>
+  );
+}
+
+// ─── Fees Tab ─────────────────────────────────────────────────────────────────
+function FeesTab({ fees, stats }: { fees: any[]; stats: any }) {
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-green-400">₹{stats.paidFees.toLocaleString()}</p>
+          <p className="text-xs text-gray-400 mt-1">Total Paid</p>
+        </div>
+        <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-center">
+          <p className="text-2xl font-bold text-red-400">₹{stats.pendingFees.toLocaleString()}</p>
+          <p className="text-xs text-gray-400 mt-1">Pending</p>
+        </div>
+      </div>
+      {stats.pendingFees > 0 && (
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4 flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 text-yellow-400 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-bold text-yellow-400">Fee Due</p>
+            <p className="text-xs text-gray-400">Please clear pending fees.</p>
+            <a href="https://wa.me/918936061688?text=Hi%2C+I+want+to+pay+fees." target="_blank" rel="noreferrer"
+              className="inline-block mt-2 text-xs font-bold text-green-400 hover:text-green-300">Pay via WhatsApp →</a>
+          </div>
+        </div>
+      )}
+      {fees.length === 0
+        ? <div className="text-center py-8 text-gray-500">No fee records yet.</div>
+        : <div className="space-y-2">
+            {fees.map(f => (
+              <div key={f.id} className="bg-[#0a0f1e] border border-gray-800 rounded-xl px-4 py-3 flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-bold text-white capitalize">{f.feeType} — {f.month}</p>
+                  {f.dueDate && <p className="text-xs text-gray-500">Due: {f.dueDate}</p>}
+                  {f.receiptNo && <p className="text-xs text-gray-500">Receipt: {f.receiptNo}</p>}
+                </div>
+                <div className="text-right">
+                  <p className="font-bold text-white">₹{f.amount.toLocaleString()}</p>
+                  <span className={`text-xs font-bold ${f.paid?"text-green-400":"text-red-400"}`}>{f.paid?`Paid ${f.paidDate||""}`:f.paidAmount>0?"Partial":"Pending"}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+      }
+    </div>
+  );
+}
+
+// ─── Performance Tab ──────────────────────────────────────────────────────────
+function PerformanceTab({ ratings }: { ratings: any[] }) {
+  if (ratings.length === 0) return (
+    <div className="text-center py-12 text-gray-500"><Star className="h-8 w-8 mx-auto mb-2 opacity-30" /><p>No ratings yet.</p></div>
+  );
+  return (
+    <div className="space-y-4">
+      {ratings.map(r => {
+        const vals = [r.batting, r.bowling, r.fielding, r.fitness, r.attitude].filter(Boolean) as number[];
+        const avg = vals.length ? (vals.reduce((a,b) => a+b,0)/vals.length).toFixed(1) : "-";
+        const color = parseFloat(avg)>=8?"text-green-400":parseFloat(avg)>=6?"text-yellow-400":"text-red-400";
+        return (
+          <div key={r.id} className="bg-[#0a0f1e] border border-gray-800 rounded-xl p-4">
+            <div className="flex justify-between items-center mb-3">
+              <div><p className="font-bold text-white text-sm">{r.sessionDate}</p><p className="text-xs text-gray-500">by {r.coachName}</p></div>
+              <div className="text-center"><p className={`text-2xl font-bold ${color}`}>{avg}</p><p className="text-xs text-gray-500">avg</p></div>
+            </div>
+            <div className="space-y-1.5">
+              {[["Batting",r.batting],["Bowling",r.bowling],["Fielding",r.fielding],["Fitness",r.fitness],["Attitude",r.attitude]].map(([k,v]) =>
+                v != null && (
+                  <div key={k as string} className="flex items-center gap-3">
+                    <span className="text-xs text-gray-400 w-16">{k}</span>
+                    <div className="flex-1 bg-gray-800 rounded-full h-1.5">
+                      <div className="h-1.5 rounded-full bg-yellow-500" style={{width:`${((v as number)/10)*100}%`}} />
+                    </div>
+                    <span className="text-xs font-bold text-white w-5">{v}</span>
+                  </div>
+                )
+              )}
+            </div>
+            {r.notes && <p className="text-xs text-gray-500 mt-3 italic border-t border-gray-800 pt-2">{r.notes}</p>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── Main Portal ──────────────────────────────────────────────────────────────
+const TABS = [
+  { id:"overview",    label:"Overview",    icon:TrendingUp },
+  { id:"qr",         label:"My QR",       icon:QrCode },
+  { id:"attendance",  label:"Attendance",  icon:Calendar },
+  { id:"fees",        label:"Fees",        icon:IndianRupee },
+  { id:"performance", label:"Performance", icon:Star },
+  { id:"notices",    label:"Notices",     icon:Bell },
+];
+
+export default function Student() {
+  const [data, setData] = useState<any>(null);
+  const [tab, setTab]   = useState("overview");
+
+  if (!data) return <LoginScreen onLogin={setData} />;
+
+  const { student, batch, stats, attendance, fees, ratings, notices } = data;
+
+  return (
+    <div className="min-h-screen bg-[#0d1529] text-white pb-24">
+      {/* Header */}
+      <div className="bg-[#0a0f1e] border-b border-gray-800 px-4 py-4">
+        <div className="max-w-lg mx-auto flex items-center justify-between">
+          <div>
+            <p className="text-xs text-gray-400 uppercase tracking-wider">Student Portal</p>
+            <h1 className="font-bold text-white text-lg">{student.name}</h1>
+            <p className="text-xs text-yellow-400">{batch?.name || "No batch"} · {student.ageGroup}</p>
+          </div>
+          <button onClick={() => setData(null)} className="text-xs text-gray-500 hover:text-gray-300 border border-gray-700 px-3 py-1.5 rounded-lg">Logout</button>
+        </div>
+      </div>
+
+      <div className="max-w-lg mx-auto p-4">
+        {tab === "overview" && (
+          <motion.div initial={{opacity:0}} animate={{opacity:1}} className="space-y-4">
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-[#0a0f1e] border border-gray-800 rounded-xl p-4 text-center">
+                <p className={`text-xl font-bold ${stats.attendancePct>=75?"text-green-400":"text-red-400"}`}>{stats.attendancePct}%</p>
+                <p className="text-xs text-gray-500 mt-1">Attendance</p>
+              </div>
+              <div className="bg-[#0a0f1e] border border-gray-800 rounded-xl p-4 text-center">
+                <p className="text-xl font-bold text-yellow-400">{student.ageGroup}</p>
+                <p className="text-xs text-gray-500 mt-1">Level</p>
+              </div>
+              <div className="bg-[#0a0f1e] border border-gray-800 rounded-xl p-4 text-center">
+                <p className={`text-xl font-bold ${stats.pendingFees>0?"text-red-400":"text-green-400"}`}>
+                  {stats.pendingFees>0?"Due":"Clear"}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">Fees</p>
+              </div>
+            </div>
+            <QRCard student={student} />
+            {notices.length > 0 && (
+              <div className="bg-[#0a0f1e] border border-yellow-500/20 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-2"><Bell className="h-4 w-4 text-yellow-400" /><p className="text-sm font-bold text-yellow-400">Latest Notice</p></div>
+                <p className="text-sm font-bold text-white">{notices[0].title}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{notices[0].message}</p>
+              </div>
+            )}
+          </motion.div>
+        )}
+        {tab === "qr"          && <motion.div initial={{opacity:0}} animate={{opacity:1}}><QRCard student={student} /></motion.div>}
+        {tab === "attendance"  && <motion.div initial={{opacity:0}} animate={{opacity:1}}><AttendanceTab attendance={attendance} stats={stats} /></motion.div>}
+        {tab === "fees"        && <motion.div initial={{opacity:0}} animate={{opacity:1}}><FeesTab fees={fees} stats={stats} /></motion.div>}
+        {tab === "performance" && <motion.div initial={{opacity:0}} animate={{opacity:1}}><PerformanceTab ratings={ratings} /></motion.div>}
+        {tab === "notices"     && (
+          <motion.div initial={{opacity:0}} animate={{opacity:1}} className="space-y-3">
+            {notices.length === 0
+              ? <div className="text-center py-10 text-gray-500"><Bell className="h-8 w-8 mx-auto mb-2 opacity-30" /><p>No notices.</p></div>
+              : notices.map((n: any) => (
+                  <div key={n.id} className="bg-[#0a0f1e] border border-yellow-500/20 rounded-xl p-4">
+                    <p className="font-bold text-white mb-1">{n.title}</p>
+                    <p className="text-sm text-gray-300">{n.message}</p>
+                    <p className="text-xs text-gray-600 mt-2">{new Date(n.createdAt).toLocaleDateString("en-IN")}</p>
+                  </div>
+                ))
+            }
+          </motion.div>
+        )}
+      </div>
+
+      {/* Bottom nav */}
+      <div className="fixed bottom-0 left-0 right-0 bg-[#0a0f1e] border-t border-gray-800 px-2 py-2 z-10">
+        <div className="max-w-lg mx-auto flex justify-around">
+          {TABS.map(({ id, label, icon: Icon }) => (
+            <button key={id} onClick={() => setTab(id)}
+              className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl transition-all ${tab===id?"text-yellow-400":"text-gray-600 hover:text-gray-400"}`}>
+              <Icon className="h-5 w-5" />
+              <span className="text-[9px] font-bold">{label}</span>
+            </button>
           ))}
         </div>
       </div>
-
-      <div className="container mx-auto px-4 py-8 max-w-3xl">
-        {tab==="Overview" && (
-          <motion.div initial={{opacity:0}} animate={{opacity:1}} className="space-y-6">
-            <div className="bg-gradient-to-r from-secondary/10 to-secondary/5 border border-secondary/20 rounded-2xl p-6 flex flex-wrap items-center gap-6">
-              <div className="w-16 h-16 bg-secondary/20 rounded-2xl flex items-center justify-center text-3xl font-display font-black text-secondary">{s.name[0]}</div>
-              <div>
-                <h2 className="font-display text-2xl font-bold">{s.name}</h2>
-                <p className="text-muted-foreground text-sm">{s.batch} · {s.level} · Coach: {s.coach}</p>
-                <p className="text-muted-foreground text-xs mt-0.5">ID: {s.id} · Joined {s.joinDate}</p>
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-card border border-border rounded-2xl p-4 text-center">
-                <Calendar className="h-5 w-5 text-blue-400 mx-auto mb-2"/>
-                <p className="text-xl font-bold font-display">{s.attendance[0].pct}</p>
-                <p className="text-xs text-muted-foreground">This Month Attendance</p>
-              </div>
-              <div className="bg-card border border-border rounded-2xl p-4 text-center">
-                <TrendingUp className="h-5 w-5 text-green-400 mx-auto mb-2"/>
-                <p className="text-xl font-bold font-display">{s.level}</p>
-                <p className="text-xs text-muted-foreground">Current Level</p>
-              </div>
-              <div className="bg-card border border-border rounded-2xl p-4 text-center">
-                <DollarSign className="h-5 w-5 text-secondary mx-auto mb-2"/>
-                <p className="text-xl font-bold font-display text-yellow-400">Due</p>
-                <p className="text-xs text-muted-foreground">June Fee Status</p>
-              </div>
-            </div>
-            <div className="bg-card border border-border rounded-2xl p-6">
-              <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground mb-4 flex items-center gap-2"><Bell className="h-4 w-4"/> Notifications</h3>
-              <div className="space-y-3">
-                {s.notifications.map((n,i)=>(
-                  <div key={i} className={`flex items-start gap-3 p-3 rounded-xl ${n.urgent?"bg-red-400/5 border border-red-400/20":"bg-muted/30"}`}>
-                    <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${n.urgent?"bg-red-400":"bg-muted-foreground"}`}/>
-                    <div className="flex-1"><p className="text-sm">{n.msg}</p><p className="text-xs text-muted-foreground mt-0.5">{n.time}</p></div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {tab==="Attendance" && (
-          <motion.div initial={{opacity:0}} animate={{opacity:1}} className="space-y-4">
-            <h2 className="font-display text-2xl font-bold">Attendance Record</h2>
-            {s.attendance.map(a=>(
-              <div key={a.month} className="bg-card border border-border rounded-2xl p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <p className="font-bold">{a.month}</p>
-                  <span className={`font-bold ${parseFloat(a.pct)>=90?"text-green-400":"text-yellow-400"}`}>{a.pct}</span>
-                </div>
-                <div className="w-full bg-muted rounded-full h-2">
-                  <div className={`h-2 rounded-full ${parseFloat(a.pct)>=90?"bg-green-400":"bg-yellow-400"}`} style={{width:a.pct}}/>
-                </div>
-                <p className="text-xs text-muted-foreground mt-2">{a.present} present out of {a.total} sessions</p>
-              </div>
-            ))}
-          </motion.div>
-        )}
-
-        {tab==="Performance" && (
-          <motion.div initial={{opacity:0}} animate={{opacity:1}} className="space-y-4">
-            <h2 className="font-display text-2xl font-bold">Performance Ratings</h2>
-            <p className="text-muted-foreground text-sm">Latest coach assessment — June 2026</p>
-            {s.performance.map(p=>(
-              <div key={p.skill} className="bg-card border border-border rounded-2xl p-5">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="font-bold">{p.skill}</p>
-                  <div className="flex gap-1">
-                    {Array.from({length:p.max}).map((_,i)=>(
-                      <div key={i} className={`w-6 h-6 rounded-md ${i<p.rating?"bg-secondary":"bg-muted"}`}/>
-                    ))}
-                  </div>
-                </div>
-                <p className="text-sm text-muted-foreground">{p.note}</p>
-              </div>
-            ))}
-          </motion.div>
-        )}
-
-        {tab==="Fees" && (
-          <motion.div initial={{opacity:0}} animate={{opacity:1}} className="space-y-4">
-            <h2 className="font-display text-2xl font-bold">Fee Status</h2>
-            {s.fees.map(f=>(
-              <div key={f.month} className="bg-card border border-border rounded-2xl p-5 flex items-center justify-between">
-                <div>
-                  <p className="font-bold">{f.month}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{f.status==="Paid"?`Paid on ${(f as any).paidOn}`:`Due by ${(f as any).dueDate}`}</p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className="font-bold text-secondary">{f.amount}</span>
-                  <span className={`text-xs font-bold px-2 py-1 rounded-full ${f.status==="Paid"?"bg-green-400/10 text-green-400":"bg-yellow-400/10 text-yellow-400"}`}>{f.status}</span>
-                  {f.status!=="Paid" && <button className="text-xs bg-secondary text-secondary-foreground font-bold px-3 py-1.5 rounded-lg hover:bg-secondary/90">Pay Now</button>}
-                </div>
-              </div>
-            ))}
-          </motion.div>
-        )}
-      </div>
-
-      <style>{`.label{display:block;font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8;margin-bottom:.375rem}.inp{width:100%;background:#0a0f1e;border:1px solid #1e293b;border-radius:.5rem;padding:.75rem 1rem;color:#f1f5f9;font-size:.875rem;outline:none}.inp:focus{border-color:#eab308}`}</style>
     </div>
   );
 }

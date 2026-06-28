@@ -9,8 +9,8 @@ export default function Footer() {
         <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-8 mb-10">
           <div className="md:col-span-2">
             <div className="flex items-center gap-2 mb-4">
-              <img src="/images/pir-logo-400.png" alt="PIR Cricket Academy" className="w-10 h-10 object-contain" />
-              <span className="font-display font-bold text-lg uppercase">PIR Cricket<span className="text-secondary"> Academy</span></span>
+              <img src="/images/pir-logo-400.png" alt="PIRcricketHub" className="w-10 h-10 object-contain" />
+              <span className="font-display font-bold text-lg uppercase">PIRcricket<span className="text-secondary">Hub</span></span>
             </div>
             <p className="text-muted-foreground text-sm leading-relaxed mb-4 max-w-xs">
               Train Like a Champion. Progress Like a Professional.<br />
@@ -43,7 +43,7 @@ export default function Footer() {
           </div>
         </div>
         <div className="border-t border-border pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
-          <p>© 2026 PIR Cricket Academy. All rights reserved.</p>
+          <p>© 2026 PIRcricketHub. All rights reserved.</p>
           <a href="https://www.pircricketacademy.co.in" className="text-secondary hover:text-secondary/80 transition-colors font-semibold">pircricketacademy.co.in</a>
         </div>
       </div>
