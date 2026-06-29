@@ -58,6 +58,7 @@ export default function Admissions() {
   const [done, setDone]           = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState("");
+  const [payMode, setPayMode] = useState<"online"|"cash">("online");
 
   const f = (k: string, v: any) => setForm(p => ({...p,[k]:v}));
   const allConsents = form.consentMedical && form.consentPhoto && form.consentLiability && form.consentTerms && form.consentData;
@@ -99,7 +100,55 @@ export default function Admissions() {
     reader.readAsDataURL(file);
   };
 
+  const submitCash = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setServerError("");
+    try {
+      const res = await fetch("/api/admissions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentName: form.studentName, dob: form.dob, ageGroup: form.ageGroup,
+          school: form.school || undefined, parentName: form.parentName,
+          phone: form.phone, email: form.email, address: form.address || undefined,
+          bloodGroup: form.bloodGroup || undefined, allergies: form.allergies || undefined,
+          asthma: form.asthma, medicalNotes: form.medicalNotes || undefined,
+          emergencyName: form.emergencyName, emergencyPhone: form.emergencyPhone,
+          consentMedical: form.consentMedical, consentPhoto: form.consentPhoto,
+          consentLiability: form.consentLiability, consentTerms: form.consentTerms,
+          consentData: form.consentData, isTrial: form.isTrial,
+          trialDate: form.trialDate || undefined, message: form.message || undefined,
+          source: selectedDiscount ? `discount:${selectedDiscount.id}` : undefined,
+          packageMonths: selectedPackage || null,
+          eligibilityDiscountPct: eligPct,
+          paymentMethod: "cash",
+        }),
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Submission failed"); }
+      if (selectedDiscount && !skipDiscount && eligConfirmed) {
+        const { id: admissionId } = await res.json();
+        await fetch("/api/discount-applications", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            studentId: admissionId,
+            discountTypeId: selectedDiscount.id,
+            documentUrl: docPreview || undefined,
+            documentName: docFile?.name || undefined,
+          }),
+        }).catch(() => {});
+      }
+      setDone(true);
+    } catch (err: any) {
+      setServerError(err.message || "Something went wrong. Please call us on +91 89360 61688.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const submit = async (e: React.FormEvent) => {
+    if (payMode === "cash") return submitCash(e);
     e.preventDefault();
     setSubmitting(true);
     setServerError("");
@@ -198,11 +247,17 @@ export default function Admissions() {
           <div className="w-20 h-20 bg-secondary/10 border-2 border-secondary/30 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle className="h-10 w-10 text-secondary"/>
           </div>
-          <h2 className="font-display text-3xl font-bold mb-3">Admission Confirmed!</h2>
-          <div className="bg-green-400/10 border border-green-400/30 rounded-xl p-3 mb-4">
-            <p className="text-green-400 font-bold text-sm">Registration fee paid · Confirmation sent to {form.email}</p>
-          </div>
-          <p className="text-muted-foreground mb-4">Thank you, <strong className="text-foreground">{form.parentName}</strong>. We have received {form.studentName}'s {form.isTrial ? "trial booking" : "admission application"} and ₹5,000 registration fee.</p>
+          <h2 className="font-display text-3xl font-bold mb-3">{payMode === "cash" ? "Seat Reserved!" : "Admission Confirmed!"}</h2>
+          {payMode === "cash" ? (
+            <div className="bg-yellow-400/10 border border-yellow-400/30 rounded-xl p-3 mb-4">
+              <p className="text-yellow-400 font-bold text-sm">Seat reserved · Please pay ₹5,000 registration fee in cash at the academy</p>
+            </div>
+          ) : (
+            <div className="bg-green-400/10 border border-green-400/30 rounded-xl p-3 mb-4">
+              <p className="text-green-400 font-bold text-sm">Registration fee paid · Confirmation sent to {form.email}</p>
+            </div>
+          )}
+          <p className="text-muted-foreground mb-4">Thank you, <strong className="text-foreground">{form.parentName}</strong>. We have received {form.studentName}'s {form.isTrial ? "trial booking" : "admission application"}{payMode === "online" ? " and ₹5,000 registration fee" : ""}.</p>
           {selectedDiscount && !skipDiscount && eligConfirmed && (
             <div className="bg-secondary/10 border border-secondary/30 rounded-xl p-4 mb-4">
               <p className="text-secondary font-bold text-sm">Discount Application Submitted</p>
@@ -587,17 +642,31 @@ export default function Admissions() {
 
             <div><label className="label">Additional Message (optional)</label><textarea value={form.message} onChange={e=>f("message",e.target.value)} rows={3} className="inp resize-none" placeholder="Any questions or specific requirements..."/></div>
 
+            {/* Payment mode selector */}
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setPayMode("online")}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-all ${payMode==="online" ? "bg-secondary text-secondary-foreground border-secondary" : "border-border text-muted-foreground hover:border-secondary/50"}`}>
+                💳 Pay Online
+              </button>
+              <button type="button" onClick={() => setPayMode("cash")}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-all ${payMode==="cash" ? "bg-green-600 text-white border-green-600" : "border-border text-muted-foreground hover:border-green-600/50"}`}>
+                💵 Pay by Cash
+              </button>
+            </div>
+
             {serverError && <p className="text-red-400 text-sm text-center bg-red-400/10 border border-red-400/20 rounded-lg p-3">{serverError}</p>}
 
             <div className="flex gap-3">
               <button type="button" onClick={()=>setStep(4)} className="px-6 py-4 border border-border rounded-xl text-muted-foreground hover:text-foreground font-bold uppercase text-sm">Back</button>
               <button type="submit" disabled={submitting}
-                className="flex-1 bg-secondary text-secondary-foreground font-bold uppercase py-4 rounded-xl hover:bg-secondary/90 transition-all shadow-[0_0_20px_rgba(234,179,8,0.25)] disabled:opacity-40 text-base flex items-center justify-center gap-2">
+                className={`flex-1 font-bold uppercase py-4 rounded-xl transition-all disabled:opacity-40 text-base flex items-center justify-center gap-2 ${payMode==="cash" ? "bg-green-600 hover:bg-green-700 text-white shadow-[0_0_20px_rgba(22,163,74,0.25)]" : "bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-[0_0_20px_rgba(234,179,8,0.25)]"}`}>
                 <ShieldCheck className="h-5 w-5"/>
-                {submitting ? "Processing..." : `Pay ₹${totalDue.toLocaleString("en-IN")} & Confirm Admission`}
+                {submitting ? "Processing..." : payMode === "cash" ? `Reserve Seat · Pay ₹${totalDue.toLocaleString("en-IN")} Cash at Academy` : `Pay ₹${totalDue.toLocaleString("en-IN")} Online & Confirm`}
               </button>
             </div>
-            <p className="text-center text-muted-foreground text-xs">We will contact you within 24 hours · Patna, Bihar</p>
+            <p className="text-center text-muted-foreground text-xs">
+              {payMode === "cash" ? "Your seat will be reserved. Pay cash at the academy on joining day." : "We will contact you within 24 hours · Patna, Bihar"}
+            </p>
           </motion.div>
         )}
       </form>

@@ -51,6 +51,7 @@ export default function Booking() {
   const [bookingRef, setBookingRef] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState("");
+  const [payMode, setPayMode] = useState<"online"|"cash">("online");
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
   const [slotPopup, setSlotPopup] = useState("");
 
@@ -70,7 +71,38 @@ export default function Booking() {
   const total = rate * sel.duration;
   const today = new Date().toISOString().split("T")[0];
 
+  const payCash = async () => {
+    if (!facility) return;
+    setSubmitting(true);
+    setServerError("");
+    try {
+      const res = await fetch("/api/bookings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          facility: sel.facility, facilityName: facility.name,
+          date: sel.date, slot: sel.slot,
+          duration: sel.duration, rate, total,
+          name: sel.name, phone: sel.phone,
+          email: sel.email || undefined,
+          paymentMethod: "cash",
+        }),
+      });
+      const text = await res.text();
+      if (!text) throw new Error(`Empty response (HTTP ${res.status})`);
+      const data = JSON.parse(text);
+      if (!res.ok) throw new Error(data.error || "Failed to create booking");
+      setBookingRef(data.bookingId || data.ref || "CASH");
+      setDone(true);
+    } catch (err: any) {
+      setServerError(err.message || "Something went wrong. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const pay = async () => {
+    if (payMode === "cash") return payCash();
     if (!facility) return;
     setSubmitting(true);
     setServerError("");
@@ -164,9 +196,15 @@ export default function Booking() {
           <p className="text-muted-foreground mb-2">Booking reference: <strong className="text-secondary">{bookingRef}</strong></p>
           <p className="text-muted-foreground text-sm mb-1">{facility?.name} · {sel.date} · {sel.slot}</p>
           <p className="text-muted-foreground text-sm mb-6">{sel.duration} hour{sel.duration>1?"s":""} · ₹{total.toLocaleString()}</p>
-          <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 text-sm text-green-400">
-            Payment received · Confirmation email sent to <strong>{sel.email}</strong>
-          </div>
+          {payMode === "cash" ? (
+            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 text-sm text-yellow-400">
+              Please pay <strong>₹{total.toLocaleString()} cash</strong> at the academy before your slot. Show this booking reference at reception.
+            </div>
+          ) : (
+            <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 text-sm text-green-400">
+              Payment received · Confirmation email sent to <strong>{sel.email}</strong>
+            </div>
+          )}
         </motion.div>
       </div>
       <Footer />
@@ -286,13 +324,26 @@ export default function Booking() {
                 <div className="flex justify-between border-t border-border/50 pt-2 mt-2"><span className="font-bold text-foreground">Total</span><span className="font-display font-bold text-secondary text-lg">₹{total.toLocaleString()}</span></div>
               </div>
             </div>
+            {/* Payment mode selector */}
+            <div className="flex gap-2 mb-4">
+              <button onClick={() => setPayMode("online")}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-all ${payMode==="online" ? "bg-secondary text-secondary-foreground border-secondary" : "border-border text-muted-foreground hover:border-secondary/50"}`}>
+                💳 Pay Online
+              </button>
+              <button onClick={() => setPayMode("cash")}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-bold border transition-all ${payMode==="cash" ? "bg-green-600 text-white border-green-600" : "border-border text-muted-foreground hover:border-green-600/50"}`}>
+                💵 Pay by Cash
+              </button>
+            </div>
             {serverError && <p className="text-red-400 text-sm text-center bg-red-400/10 border border-red-400/20 rounded-lg p-3 mb-4">{serverError}</p>}
-            <button disabled={!sel.name||!sel.phone||!sel.email||submitting} onClick={pay}
-              className="w-full bg-secondary text-secondary-foreground font-bold uppercase py-4 rounded-xl hover:bg-secondary/90 transition-all shadow-[0_0_20px_rgba(234,179,8,0.25)] text-base disabled:opacity-40 flex items-center justify-center gap-3">
+            <button disabled={!sel.name||!sel.phone||(payMode==="online"&&!sel.email)||submitting} onClick={pay}
+              className={`w-full font-bold uppercase py-4 rounded-xl transition-all text-base disabled:opacity-40 flex items-center justify-center gap-3 ${payMode==="cash" ? "bg-green-600 hover:bg-green-700 text-white shadow-[0_0_20px_rgba(22,163,74,0.25)]" : "bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-[0_0_20px_rgba(234,179,8,0.25)]"}`}>
               <ShieldCheck className="h-5 w-5"/>
-              {submitting ? "Opening Payment..." : `Pay ₹${total.toLocaleString()} via UPI`}
+              {submitting ? "Processing..." : payMode === "cash" ? `Book Now · Pay ₹${total.toLocaleString()} Cash at Academy` : `Pay ₹${total.toLocaleString()} Online`}
             </button>
-            <p className="text-center text-muted-foreground text-xs mt-3">Secure UPI payment · PhonePe · GPay · Paytm · 0% extra charges · Confirmation email sent instantly</p>
+            <p className="text-center text-muted-foreground text-xs mt-3">
+              {payMode === "cash" ? "Your slot will be reserved. Pay cash at reception before your session." : "Secure payment · PhonePe · GPay · Paytm · UPI · Cards · 0% extra charges"}
+            </p>
           </motion.div>
         )}
       </div>
