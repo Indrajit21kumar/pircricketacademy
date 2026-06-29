@@ -177,6 +177,8 @@ export default function Admin() {
   const [bookings,   setBookings]   = useState<Booking[]>([]);
   const [inquiries,  setInquiries]  = useState<Inquiry[]>([]);
   const [loading, setLoading] = useState(false);
+  const [cleanupDays, setCleanupDays] = useState(30);
+  const [cleanupMsg, setCleanupMsg] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -195,6 +197,19 @@ export default function Admin() {
   const updateStatus = async (type: string, id: number, status: string) => {
     await apiFetch(`/${type}/${id}/status`, { method:"PATCH", body: JSON.stringify({ status }) });
     load();
+  };
+
+  const cleanupBookings = async () => {
+    if (!confirm(`Delete all bookings older than ${cleanupDays} days? This cannot be undone.`)) return;
+    setCleanupMsg("Deleting...");
+    try {
+      const res = await apiFetch(`/bookings/cleanup?days=${cleanupDays}`, { method: "DELETE" });
+      const data = await res.json();
+      setCleanupMsg(data.message || `Deleted ${data.deleted} bookings`);
+      load();
+    } catch {
+      setCleanupMsg("Error — please try again.");
+    }
   };
 
   if (!authed) return <LoginScreen onAuth={() => setAuthed(true)} resetToken={resetToken} />;
@@ -324,6 +339,22 @@ export default function Admin() {
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground">All Bookings</h3>
                   <span className="text-xs text-muted-foreground">{bookings.filter(b=>b.status==="confirmed").length} confirmed</span>
+                </div>
+                {/* Cleanup old bookings */}
+                <div className="flex items-center gap-2 mb-4 p-3 bg-red-950/30 border border-red-500/20 rounded-xl">
+                  <span className="text-xs text-muted-foreground shrink-0">Delete bookings older than</span>
+                  <select value={cleanupDays} onChange={e=>setCleanupDays(Number(e.target.value))}
+                    className="bg-background border border-border rounded-lg px-2 py-1 text-xs text-foreground">
+                    <option value={7}>7 days</option>
+                    <option value={30}>30 days</option>
+                    <option value={60}>60 days</option>
+                    <option value={90}>90 days</option>
+                  </select>
+                  <button onClick={cleanupBookings}
+                    className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-lg transition-colors shrink-0">
+                    🗑 Delete
+                  </button>
+                  {cleanupMsg && <span className="text-xs text-green-400 truncate">{cleanupMsg}</span>}
                 </div>
                 {bookings.length === 0 ? <p className="text-muted-foreground text-sm">No bookings yet.</p> :
                   <div className="space-y-3">

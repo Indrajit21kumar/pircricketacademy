@@ -6,7 +6,7 @@ import {
   notifications, sessionNotes, playerRatings, events,
   discountTypes, discountApplications, passwordResets,
 } from "../server/db/schema.js";
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, lt } from "drizzle-orm";
 import { z } from "zod";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
@@ -454,6 +454,19 @@ async function handleBookings(req: VercelRequest, res: VercelResponse, sub: stri
     const { status } = z.object({ status: z.enum(["pending_payment","confirmed","cancelled","refunded"]) }).parse(req.body);
     const [row] = await db.update(bookings).set({ status }).where(eq(bookings.id, id)).returning();
     return res.json(row);
+  }
+
+  // DELETE /api/bookings/cleanup?days=30  — delete past bookings older than N days (admin only)
+  if (req.method === "DELETE" && action === "cleanup") {
+    try { requireAdmin(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
+    const days = parseInt((req.query.days as string) || "30");
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - days);
+    const cutoffStr = cutoff.toISOString().split("T")[0]; // YYYY-MM-DD
+    const deleted = await db.delete(bookings)
+      .where(lt(bookings.date, cutoffStr))
+      .returning();
+    return res.json({ deleted: deleted.length, cutoff: cutoffStr, message: `Deleted ${deleted.length} bookings before ${cutoffStr}` });
   }
 
   return res.status(405).json({ error: "Method not allowed" });
