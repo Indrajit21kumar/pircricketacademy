@@ -30,7 +30,7 @@ const founders = [
   {
     initials: "PM",
     name: "Pankaj Mishra",
-    role: "Founder & Head Coach",
+    role: "Head Coach",
     roleColor: "text-secondary",
     photo: "/images/pankaj-mishra.jpeg",
     highlight: "BCCI Level A Certified Coach, Bihar Cricket Association",
@@ -44,7 +44,7 @@ const founders = [
   {
     initials: "RR",
     name: "Ritesh Ranjan",
-    role: "Founder & Coach",
+    role: "Coach",
     roleColor: "text-secondary",
     photo: "/images/ritesh-ranjan.png",
     highlight: "Patna University Cricket Player & Sports Promoter, Bihar",
