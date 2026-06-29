@@ -13,7 +13,7 @@ const indrajitStats = [
 const founders = [
   {
     initials: "IK",
-    name: "Indrajit Kumar",
+    name: "Mentor",
     role: "Founder & Mentor",
     roleColor: "text-secondary",
     photo: "/images/indrajit-linkedin.png",
@@ -30,7 +30,7 @@ const founders = [
   {
     initials: "PM",
     name: "Pankaj Mishra",
-    role: "Co-Founder & Head Coach",
+    role: "Founder & Head Coach",
     roleColor: "text-secondary",
     photo: "/images/pankaj-mishra.jpeg",
     highlight: "BCCI Level A Certified Coach, Bihar Cricket Association",
@@ -44,7 +44,7 @@ const founders = [
   {
     initials: "RR",
     name: "Ritesh Ranjan",
-    role: "Co-Founder & Coach",
+    role: "Founder & Coach",
     roleColor: "text-secondary",
     photo: "/images/ritesh-ranjan.png",
     highlight: "Patna University Cricket Player & Sports Promoter, Bihar",
