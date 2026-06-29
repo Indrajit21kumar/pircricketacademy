@@ -13,8 +13,8 @@ const indrajitStats = [
 const founders = [
   {
     initials: "IK",
-    name: "Mentor",
-    role: "Founder & Mentor",
+    name: "Indrajit Kumar",
+    role: "Mentor",
     roleColor: "text-secondary",
     photo: "/images/indrajit-linkedin.png",
     highlight: "Bihar's First Double Centurion in Ranji Trophy (Post 2018 BCCI Affiliation)",
