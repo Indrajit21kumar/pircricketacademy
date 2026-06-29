@@ -294,7 +294,7 @@ export default function Admissions() {
             <h2 className="font-display text-2xl font-bold mb-4">Student Details</h2>
             <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
               <div className="grid sm:grid-cols-2 gap-4">
-                <div><label className="label">Student Full Name *</label><input required value={form.studentName} onChange={e=>f("studentName",e.target.value)} className="inp" placeholder="Arjun Kumar"/></div>
+                <div><label className="label">Student Full Name *</label><input required value={form.studentName} onChange={e=>f("studentName",e.target.value)} className="inp" placeholder="Enter student's full name"/></div>
                 <div><label className="label">Date of Birth *</label><input required type="date" value={form.dob} onChange={e=>f("dob",e.target.value)} className="inp"/></div>
               </div>
               <div className="grid sm:grid-cols-2 gap-4">
@@ -327,11 +327,11 @@ export default function Admissions() {
             <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
               <p className="text-xs font-bold uppercase tracking-wider text-secondary">Parent / Guardian</p>
               <div className="grid sm:grid-cols-2 gap-4">
-                <div><label className="label">Parent / Guardian Name *</label><input required value={form.parentName} onChange={e=>f("parentName",e.target.value)} className="inp" placeholder="Ramesh Kumar"/></div>
-                <div><label className="label">Phone Number *</label><input required value={form.phone} onChange={e=>f("phone",e.target.value)} className="inp" placeholder="+91 98765 43210"/></div>
+                <div><label className="label">Parent / Guardian Name *</label><input required value={form.parentName} onChange={e=>f("parentName",e.target.value)} className="inp" placeholder="Enter parent/guardian name"/></div>
+                <div><label className="label">Phone Number *</label><input required value={form.phone} onChange={e=>f("phone",e.target.value)} className="inp" placeholder="Enter 10-digit mobile number"/></div>
               </div>
               <div className="grid sm:grid-cols-2 gap-4">
-                <div><label className="label">Email Address *</label><input required type="email" value={form.email} onChange={e=>f("email",e.target.value)} className="inp" placeholder="ramesh@email.com"/></div>
+                <div><label className="label">Email Address *</label><input required type="email" value={form.email} onChange={e=>f("email",e.target.value)} className="inp" placeholder="Enter email address"/></div>
               </div>
             </div>
             <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
@@ -350,7 +350,7 @@ export default function Admissions() {
               </div>
               <div><label className="label">Other Medical Conditions</label><textarea value={form.medicalNotes} onChange={e=>f("medicalNotes",e.target.value)} rows={2} className="inp resize-none" placeholder="None / describe any conditions..."/></div>
               <div className="grid sm:grid-cols-2 gap-4">
-                <div><label className="label">Emergency Contact Name *</label><input required value={form.emergencyName} onChange={e=>f("emergencyName",e.target.value)} className="inp" placeholder="Sunita Kumar"/></div>
+                <div><label className="label">Emergency Contact Name *</label><input required value={form.emergencyName} onChange={e=>f("emergencyName",e.target.value)} className="inp" placeholder="Emergency contact name"/></div>
                 <div><label className="label">Emergency Contact Phone *</label><input required value={form.emergencyPhone} onChange={e=>f("emergencyPhone",e.target.value)} className="inp" placeholder="+91 99999 99999"/></div>
               </div>
             </div>

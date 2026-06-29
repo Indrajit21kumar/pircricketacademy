@@ -307,12 +307,12 @@ export default function Booking() {
             <div className="bg-card border border-border rounded-2xl p-6 space-y-4 mb-5">
               <div className="grid sm:grid-cols-2 gap-4">
                 <div><label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">Full Name *</label>
-                  <input required value={sel.name} onChange={e=>setSel({...sel,name:e.target.value})} className="w-full bg-background border border-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-secondary transition-colors" placeholder="Ramesh Kumar"/></div>
+                  <input required value={sel.name} onChange={e=>setSel({...sel,name:e.target.value})} className="w-full bg-background border border-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-secondary transition-colors" placeholder="Enter your full name"/></div>
                 <div><label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">Phone Number *</label>
-                  <input required value={sel.phone} onChange={e=>setSel({...sel,phone:e.target.value})} className="w-full bg-background border border-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-secondary transition-colors" placeholder="+91 98765 43210"/></div>
+                  <input required value={sel.phone} onChange={e=>setSel({...sel,phone:e.target.value})} className="w-full bg-background border border-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-secondary transition-colors" placeholder="Enter 10-digit mobile number"/></div>
               </div>
               <div><label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">Email Address *</label>
-                <input required type="email" value={sel.email} onChange={e=>setSel({...sel,email:e.target.value})} className="w-full bg-background border border-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-secondary transition-colors" placeholder="ramesh@email.com"/></div>
+                <input required type="email" value={sel.email} onChange={e=>setSel({...sel,email:e.target.value})} className="w-full bg-background border border-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-secondary transition-colors" placeholder="Enter your email address"/></div>
             </div>
             <div className="bg-secondary/5 border border-secondary/20 rounded-2xl p-5 mb-5">
               <p className="font-bold uppercase tracking-wider text-sm mb-3">Booking Summary</p>
