@@ -53,12 +53,6 @@ export default function Hero() {
           </span>
         </motion.div>
 
-        {/* Founder badge */}
-        <motion.div initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} transition={{duration:0.5,delay:0.1}} className="mb-5">
-          <span className="inline-flex items-center gap-2 border border-secondary/40 bg-secondary/10 text-secondary rounded-full px-4 py-1.5 text-sm font-bold uppercase tracking-wider backdrop-blur-sm">
-            <Trophy className="h-4 w-4" /> Bihar's First Double Centurion in Ranji Trophy
-          </span>
-        </motion.div>
 
         <motion.h1 initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} transition={{duration:0.5,delay:0.15}} className="font-display text-5xl md:text-7xl font-bold text-white leading-tight tracking-tighter mb-3">
           Forge Your Legacy
