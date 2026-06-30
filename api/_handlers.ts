@@ -414,7 +414,8 @@ async function handleBookings(req: VercelRequest, res: VercelResponse, sub: stri
       date: z.string().min(1), slot: z.string().min(1),
       duration: z.number().int().positive(), rate: z.number().int().positive(),
       total: z.number().int().positive(), name: z.string().min(1),
-      phone: z.string().min(1), email: z.string().email(),
+      phone: z.string().min(1), email: z.string().email().optional(),
+      paymentMethod: z.enum(["online","cash"]).optional().default("online"),
     }).parse(req.body);
 
     // Server-side slot conflict check
@@ -431,6 +432,20 @@ async function handleBookings(req: VercelRequest, res: VercelResponse, sub: stri
     }
 
     const ref = "PIR" + crypto.randomBytes(4).toString("hex").toUpperCase();
+
+    // Cash payment — skip Razorpay, confirm immediately
+    if (data.paymentMethod === "cash") {
+      const [row] = await db.insert(bookings).values({
+        facility: data.facility, facilityName: data.facilityName,
+        date: data.date, slot: data.slot, duration: data.duration,
+        rate: data.rate, total: data.total, name: data.name,
+        phone: data.phone, email: data.email,
+        ref, status: "confirmed",
+      }).returning();
+      sendBookingNotifications(row).catch(() => {});
+      return res.status(201).json({ bookingId: row.id, ref: row.ref });
+    }
+
     const keyId = process.env.RAZORPAY_KEY_ID || "";
     const keySecret = process.env.RAZORPAY_KEY_SECRET || "";
     if (!keyId || !keySecret) return res.status(500).json({ error: "Razorpay keys not configured" });
@@ -447,7 +462,11 @@ async function handleBookings(req: VercelRequest, res: VercelResponse, sub: stri
     }
     const order = await (orderRes.json() as Promise<{ id: string }>);
     const [row] = await db.insert(bookings).values({
-      ...data, ref, razorpayOrderId: order.id, status: "pending_payment",
+      facility: data.facility, facilityName: data.facilityName,
+      date: data.date, slot: data.slot, duration: data.duration,
+      rate: data.rate, total: data.total, name: data.name,
+      phone: data.phone, email: data.email,
+      ref, razorpayOrderId: order.id, status: "pending_payment",
     }).returning();
 
     return res.status(201).json({ bookingId: row.id, orderId: order.id, amount: data.total * 100, keyId, ref });
