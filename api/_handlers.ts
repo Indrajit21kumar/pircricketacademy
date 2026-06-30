@@ -10,6 +10,7 @@ import { eq, inArray, lt } from "drizzle-orm";
 import { z } from "zod";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
+import nodemailer from "nodemailer";
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -112,7 +113,7 @@ async function sendAdmissionNotifications(data: {
   emergencyName: string; emergencyPhone: string; dob: string; address?: string;
   razorpayPaymentId?: string; admissionId: number;
 }) {
-  const adminEmail = process.env.ADMIN_EMAIL || "kumarindrajitcricket@gmail.com";
+  const adminEmail = process.env.ADMIN_EMAIL || "PIRcricketHub@gmail.com";
   const adminPhone = process.env.ADMIN_PHONE || "7903053204";
   const type = data.isTrial ? "Free Trial Session" : "Admission Application";
 
@@ -280,12 +281,18 @@ function getOccupiedSlots(startSlot: string, duration: number): string[] {
 }
 
 async function sendEmail(to: string, subject: string, html: string) {
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) return;
-  await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: process.env.RESEND_FROM_EMAIL || "PIR Cricket Academy <onboarding@resend.dev>", to, subject, html }),
+  const gmailUser = process.env.GMAIL_USER || "PIRcricketHub@gmail.com";
+  const gmailPass = process.env.GMAIL_APP_PASSWORD;
+  if (!gmailPass) return; // skip if not configured
+  const transporter = nodemailer.createTransport({
+    service: "gmail",
+    auth: { user: gmailUser, pass: gmailPass },
+  });
+  await transporter.sendMail({
+    from: `"PIRcricketHub" <${gmailUser}>`,
+    to,
+    subject,
+    html,
   });
 }
 
@@ -315,7 +322,7 @@ async function sendBookingNotifications(booking: {
 }) {
   const { ref, name, phone, email, facilityName, date, slot, duration, total } = booking;
   const adminPhone = process.env.ADMIN_PHONE || "7903053204";
-  const adminEmail = process.env.ADMIN_EMAIL || "kumarindrajitcricket@gmail.com";
+  const adminEmail = process.env.ADMIN_EMAIL || "PIRcricketHub@gmail.com";
 
   const customerMsg = `✅ *Booking Confirmed!*\n\nHi ${name}, your booking at PIR Cricket Academy is confirmed.\n\n🏟️ *Facility:* ${facilityName}\n📅 *Date:* ${date}\n⏰ *Time:* ${slot}\n⏱️ *Duration:* ${duration} hour${duration > 1 ? "s" : ""}\n💰 *Amount Paid:* ₹${total.toLocaleString()}\n🎫 *Ref:* ${ref}\n\nSee you on the ground! 🏏\n- PIR Cricket Academy`;
 
@@ -1065,16 +1072,11 @@ export async function handlePasswordReset(req: VercelRequest, res: VercelRespons
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
     await db.insert(passwordResets).values({ username, token, expiresAt });
     const resetUrl = `${process.env.FRONTEND_URL || "https://pircricketacademy.co.in"}/admin?reset=${token}`;
-    const adminEmail = process.env.ADMIN_EMAIL || "kumarindrajitcricket@gmail.com";
-    await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${process.env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from: process.env.RESEND_FROM_EMAIL || "PIR Cricket Academy <onboarding@resend.dev>",
-        to: adminEmail,
-        subject: "PIRcricketHub — Admin Password Reset",
-        html: `<p>Hi ${user.name},</p><p>Click the link below to reset your admin password. This link expires in 1 hour.</p><p><a href="${resetUrl}" style="background:#eab308;color:#000;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">Reset Password</a></p><p>If you did not request this, ignore this email.</p>`,
-      }),
+    const adminEmail = process.env.ADMIN_EMAIL || "PIRcricketHub@gmail.com";
+    await sendEmail(
+      adminEmail,
+      "PIRcricketHub — Admin Password Reset",
+      `<p>Hi ${user.name},</p><p>Click the link below to reset your admin password. This link expires in 1 hour.</p><p><a href="${resetUrl}" style="background:#eab308;color:#000;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">Reset Password</a></p><p>If you did not request this, ignore this email.</p>`,
     });
     return res.json({ ok: true });
   }
