@@ -1094,7 +1094,7 @@ export async function handlePasswordReset(req: VercelRequest, res: VercelRespons
       adminEmail,
       "PIRcricketHub — Admin Password Reset",
       `<p>Hi ${user.name},</p><p>Click the link below to reset your admin password. This link expires in 1 hour.</p><p><a href="${resetUrl}" style="background:#eab308;color:#000;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">Reset Password</a></p><p>If you did not request this, ignore this email.</p>`,
-    });
+    );
     return res.json({ ok: true });
   }
 
