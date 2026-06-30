@@ -14,6 +14,25 @@ import Gallery from "@/components/Gallery";
 import Contact from "@/components/Contact";
 import Footer from "@/components/Footer";
 
+function FacilityShowcase() {
+  return (
+    <section className="relative overflow-hidden">
+      <img
+        src="/images/pir-facility-collage.png"
+        alt="PIRcricketHub — World-class cricket facilities in Patna"
+        className="w-full object-cover"
+        style={{ maxHeight: "600px", objectPosition: "center" }}
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-background via-background/10 to-transparent" />
+      <div className="absolute bottom-6 left-0 right-0 text-center z-10">
+        <p className="text-white/80 text-sm font-semibold uppercase tracking-widest drop-shadow-lg">
+          World-class Cricket Infrastructure · Patna, Bihar
+        </p>
+      </div>
+    </section>
+  );
+}
+
 function AdmissionCTA() {
   return (
     <section className="py-20 bg-gradient-to-br from-secondary/10 via-background to-secondary/5 border-t border-secondary/10">
@@ -55,6 +74,7 @@ export default function Home() {
       <Programs />
       <Fees />
       <Facilities />
+      <FacilityShowcase />
       <Founder />
       <Partners />
       <Gallery />
