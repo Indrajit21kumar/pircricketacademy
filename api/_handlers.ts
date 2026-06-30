@@ -10,7 +10,6 @@ import { eq, inArray, lt } from "drizzle-orm";
 import { z } from "zod";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
-import nodemailer from "nodemailer";
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -281,18 +280,17 @@ function getOccupiedSlots(startSlot: string, duration: number): string[] {
 }
 
 async function sendEmail(to: string, subject: string, html: string) {
-  const gmailUser = process.env.GMAIL_USER || "PIRcricketHub@gmail.com";
-  const gmailPass = process.env.GMAIL_APP_PASSWORD;
-  if (!gmailPass) return; // skip if not configured
-  const transporter = nodemailer.createTransport({
-    service: "gmail",
-    auth: { user: gmailUser, pass: gmailPass },
-  });
-  await transporter.sendMail({
-    from: `"PIRcricketHub" <${gmailUser}>`,
-    to,
-    subject,
-    html,
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return;
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: process.env.RESEND_FROM_EMAIL || "PIRcricketHub <onboarding@resend.dev>",
+      to,
+      subject,
+      html,
+    }),
   });
 }
 
