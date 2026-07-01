@@ -78,9 +78,9 @@ export default function Contact() {
               <div className="bg-secondary/10 rounded-lg p-3 shrink-0"><MessageCircle className="h-5 w-5 text-secondary" /></div>
               <div><p className="font-bold text-sm uppercase tracking-wider mb-1">WhatsApp</p><p className="text-secondary font-bold">+91 89360 61688</p><p className="text-muted-foreground text-xs mt-0.5">Quick response</p></div>
             </motion.a>
-            <motion.a href="mailto:pankajmishra1473@gmail.com" initial={{opacity:0,x:-10}} whileInView={{opacity:1,x:0}} viewport={{once:true}} transition={{delay:0.2}} className="flex items-start gap-4 bg-card border border-border rounded-xl p-5 hover:border-secondary/40 transition-colors">
+            <motion.a href="mailto:PIRcricketHub@gmail.com" initial={{opacity:0,x:-10}} whileInView={{opacity:1,x:0}} viewport={{once:true}} transition={{delay:0.2}} className="flex items-start gap-4 bg-card border border-border rounded-xl p-5 hover:border-secondary/40 transition-colors">
               <div className="bg-secondary/10 rounded-lg p-3 shrink-0"><Mail className="h-5 w-5 text-secondary" /></div>
-              <div><p className="font-bold text-sm uppercase tracking-wider mb-1">Email</p><p className="text-secondary font-bold text-xs break-all">pankajmishra1473@gmail.com</p><p className="text-muted-foreground text-xs mt-0.5">Head Coach enquiries</p></div>
+              <div><p className="font-bold text-sm uppercase tracking-wider mb-1">Email</p><p className="text-secondary font-bold text-xs break-all">PIRcricketHub@gmail.com</p><p className="text-muted-foreground text-xs mt-0.5">General enquiries</p></div>
             </motion.a>
             <motion.div initial={{opacity:0,x:-10}} whileInView={{opacity:1,x:0}} viewport={{once:true}} transition={{delay:0.3}} className="flex items-start gap-4 bg-card border border-border rounded-xl p-5">
               <div className="bg-secondary/10 rounded-lg p-3 shrink-0"><MapPin className="h-5 w-5 text-secondary" /></div>
