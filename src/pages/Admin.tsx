@@ -221,12 +221,12 @@ export default function Admin() {
   const paidAdmissions = admissions.filter(a => a.paymentStatus === "paid");
   const admissionRevenue = paidAdmissions.reduce((s, a) => s + (a.totalPaid || a.registrationFee || 5000), 0);
   const KPI = [
-    { label:"Total Applications", value: String(admissions.length),        icon:Users,    color:"text-blue-400",   bg:"bg-blue-400/10" },
-    { label:"Joined Students",    value: String(joinedStudents.length),     icon:Activity, color:"text-green-400",  bg:"bg-green-400/10" },
-    { label:"Ground Bookings",    value: String(confirmedBookings.length),  icon:Calendar, color:"text-purple-400", bg:"bg-purple-400/10" },
-    { label:"Ground Revenue",     value: `₹${groundRevenue.toLocaleString()}`, icon:DollarSign, color:"text-secondary", bg:"bg-secondary/10" },
-    { label:"Admission Revenue",  value: `₹${admissionRevenue.toLocaleString()}`, icon:TrendingUp, color:"text-green-400", bg:"bg-green-400/10" },
-    { label:"New Leads",          value: String(inquiries.filter(i=>i.status==="new").length), icon:BarChart3, color:"text-orange-400", bg:"bg-orange-400/10" },
+    { label:"Total Applications", value: String(admissions.length),        icon:Users,    color:"text-blue-400",   bg:"bg-blue-400/10",  tab:"Admissions" },
+    { label:"Joined Students",    value: String(joinedStudents.length),     icon:Activity, color:"text-green-400",  bg:"bg-green-400/10", tab:"Admissions" },
+    { label:"Ground Bookings",    value: String(confirmedBookings.length),  icon:Calendar, color:"text-purple-400", bg:"bg-purple-400/10",tab:"Bookings" },
+    { label:"Ground Revenue",     value: `₹${groundRevenue.toLocaleString()}`, icon:DollarSign, color:"text-secondary", bg:"bg-secondary/10", tab:"Bookings" },
+    { label:"Admission Revenue",  value: `₹${admissionRevenue.toLocaleString()}`, icon:TrendingUp, color:"text-green-400", bg:"bg-green-400/10", tab:"Admissions" },
+    { label:"New Leads",          value: String(inquiries.filter(i=>i.status==="new").length), icon:BarChart3, color:"text-orange-400", bg:"bg-orange-400/10", href:"/admin/crm" },
   ];
 
   return (
@@ -263,13 +263,17 @@ export default function Admin() {
               <p className="text-muted-foreground">Live data — PIRcricketHub, Patna</p>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-              {KPI.map(k=>(
-                <div key={k.label} className="bg-card border border-border rounded-2xl p-5">
+              {KPI.map(k => {
+                const cardCls = "bg-card border border-border rounded-2xl p-5 text-left w-full hover:border-secondary/40 hover:bg-secondary/5 transition-all cursor-pointer group";
+                const inner = <>
                   <div className={`w-10 h-10 ${k.bg} rounded-xl flex items-center justify-center mb-3`}><k.icon className={`h-5 w-5 ${k.color}`}/></div>
-                  <p className="text-2xl font-bold font-display">{k.value}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{k.label}</p>
-                </div>
-              ))}
+                  <p className={`text-2xl font-bold font-display ${k.color}`}>{k.value}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 group-hover:text-foreground transition-colors">{k.label} →</p>
+                </>;
+                return k.href
+                  ? <Link key={k.label} href={k.href} className={cardCls}>{inner}</Link>
+                  : <button key={k.label} onClick={()=>setTab((k as any).tab)} className={cardCls}>{inner}</button>;
+              })}
             </div>
             {/* Module quick-links */}
             <div className="mb-8">
