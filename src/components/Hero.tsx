@@ -126,9 +126,12 @@ export default function Hero() {
         </motion.div>
 
         {/* Address strip */}
-        <motion.p initial={{opacity:0}} animate={{opacity:1}} transition={{delay:0.9}} className="mt-8 text-white/50 text-xs uppercase tracking-widest" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.8)" }}>
-          Sector-A, Police Colony, Anisabad, Patna – 800002, Bihar
-        </motion.p>
+        <motion.div initial={{opacity:0}} animate={{opacity:1}} transition={{delay:0.9}} className="mt-8 inline-flex items-center gap-2 bg-black/50 border border-white/20 backdrop-blur-md rounded-full px-5 py-2.5 shadow-lg">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-secondary shrink-0" viewBox="0 0 24 24" fill="currentColor"><path fillRule="evenodd" d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-2.079 3.218-4.402 3.218-6.853C19.5 6.351 16.165 3 12 3s-7.5 3.351-7.5 7.47c0 2.45 1.274 4.773 3.218 6.853a19.58 19.58 0 002.683 2.282 16.975 16.975 0 001.144.742z" clipRule="evenodd" /></svg>
+          <span className="text-white font-semibold text-sm tracking-wide" style={{ textShadow: "0 1px 4px rgba(0,0,0,0.9)" }}>
+            Sector-A, Police Colony, Anisabad, Patna – 800002, Bihar
+          </span>
+        </motion.div>
       </div>
 
       {/* Scroll indicator */}
