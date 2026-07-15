@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Link } from "wouter";
 import { motion } from "framer-motion";
 import { Calendar, TrendingUp, DollarSign, Bell, QrCode, CheckCircle, XCircle, Clock, AlertCircle, Star, IndianRupee } from "lucide-react";
 import QRCode from "qrcode";
@@ -263,7 +264,10 @@ export default function Student() {
             <h1 className="font-bold text-white text-lg">{student.name}</h1>
             <p className="text-xs text-yellow-400">{batch?.name || "No batch"} · {student.ageGroup}</p>
           </div>
-          <button onClick={() => setData(null)} className="text-xs text-gray-500 hover:text-gray-300 border border-gray-700 px-3 py-1.5 rounded-lg">Logout</button>
+          <div className="flex items-center gap-2">
+            <Link href="/" className="text-xs text-gray-500 hover:text-yellow-400 border border-gray-700 px-3 py-1.5 rounded-lg transition-colors">← Home</Link>
+            <button onClick={() => setData(null)} className="text-xs text-gray-500 hover:text-gray-300 border border-gray-700 px-3 py-1.5 rounded-lg">Logout</button>
+          </div>
         </div>
       </div>
 
