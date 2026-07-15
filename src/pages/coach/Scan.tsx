@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Link } from "wouter";
 import { QrCode, CheckCircle, AlertCircle, Camera, Users } from "lucide-react";
 
 const TODAY = new Date().toISOString().split("T")[0];
@@ -58,6 +59,7 @@ export default function ScanPage() {
   return (
     <div className="min-h-screen bg-[#0a0f1e] text-white flex flex-col items-center p-4 pt-8">
       <div className="w-full max-w-md">
+        <Link href="/coach" className="inline-flex items-center gap-1.5 text-sm text-yellow-400/70 hover:text-yellow-400 transition-colors mb-6">← Coach Portal</Link>
 
         {/* Header */}
         <div className="text-center mb-8">
