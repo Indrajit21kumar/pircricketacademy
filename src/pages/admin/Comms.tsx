@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
+import { Link } from "wouter";
 import {
   MessageCircle, Plus, Send, Users, FileText,
   Trash2, Copy, CheckCircle, X, History, Eye,
-  ChevronDown, ExternalLink
+  ChevronDown, ChevronLeft, ExternalLink
 } from "lucide-react";
 
 const inp = "w-full bg-[#0a0f1e] border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-yellow-500";
@@ -333,6 +334,7 @@ export default function CommsPage() {
   return (
     <div className="min-h-screen bg-[#0a0f1e] text-white p-4 md:p-6">
       <div className="max-w-5xl mx-auto">
+        <Link href="/admin" className="inline-flex items-center gap-1.5 text-sm text-yellow-400/70 hover:text-yellow-400 transition-colors mb-6"><ChevronLeft className="h-4 w-4" /> Dashboard</Link>
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
           <MessageCircle className="h-7 w-7 text-yellow-400" />

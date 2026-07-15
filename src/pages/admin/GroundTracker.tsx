@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
+import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { Calendar, Clock, Phone, CheckCircle, AlertCircle, XCircle, RefreshCw } from "lucide-react";
+import { Calendar, Clock, Phone, CheckCircle, AlertCircle, XCircle, RefreshCw, ChevronLeft } from "lucide-react";
 
 const SLOTS = ["06:00 AM","07:00 AM","08:00 AM","09:00 AM","10:00 AM","11:00 AM","12:00 PM","01:00 PM","02:00 PM","03:00 PM","04:00 PM","05:00 PM","06:00 PM","07:00 PM","08:00 PM","09:00 PM"];
 const TOKEN_KEY = "pir_admin_token";
@@ -187,9 +188,12 @@ export function GroundTrackerContent() {
 export default function GroundTracker() {
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <div className="border-b border-border bg-card px-6 py-4">
-        <h1 className="font-display text-2xl font-bold">Ground Tracker</h1>
-        <p className="text-muted-foreground text-sm">Live slot availability — receptionist view</p>
+      <div className="border-b border-border bg-card px-6 py-4 flex items-center justify-between">
+        <div>
+          <h1 className="font-display text-2xl font-bold">Ground Tracker</h1>
+          <p className="text-muted-foreground text-sm">Live slot availability — receptionist view</p>
+        </div>
+        <Link href="/admin" className="inline-flex items-center gap-1.5 text-sm text-secondary/70 hover:text-secondary transition-colors"><ChevronLeft className="h-4 w-4" /> Dashboard</Link>
       </div>
       <div className="p-6 max-w-5xl mx-auto">
         <GroundTrackerContent />

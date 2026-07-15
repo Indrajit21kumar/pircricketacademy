@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { Users, Plus, QrCode, Download, Search, X } from "lucide-react";
+import { Link } from "wouter";
+import { Users, Plus, QrCode, Download, Search, X, ChevronLeft } from "lucide-react";
 import QRCode from "qrcode";
 
 const AGE_GROUPS = ["U8","U10","U12","U14","U16","U19","Elite"];
@@ -172,6 +173,7 @@ export default function StudentsPage() {
       {showAdd && <AddStudentModal batches={batches} onClose={() => setShowAdd(false)} onSaved={load} />}
 
       <div className="max-w-6xl mx-auto">
+        <Link href="/admin" className="inline-flex items-center gap-1.5 text-sm text-yellow-400/70 hover:text-yellow-400 transition-colors mb-6"><ChevronLeft className="h-4 w-4" /> Dashboard</Link>
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
             <Users className="h-7 w-7 text-yellow-400" />
