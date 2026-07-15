@@ -123,7 +123,7 @@ function LeadDrawer({ lead, onClose, onUpdate }: { lead: Lead; onClose: () => vo
   const nextStage = STAGES.find(s => s.id === nextStageId);
 
   const loadFollowUps = () =>
-    fetch(`/api/follow-ups?inquiryId=${lead.id}`)
+    fetch(`/api/follow-ups?inquiryId=${lead.id}`, { headers: authHeaders() })
       .then(r => r.json())
       .then(d => setFollowUps(Array.isArray(d) ? d.map((x: any) => x.followUp) : []));
 
@@ -136,7 +136,7 @@ function LeadDrawer({ lead, onClose, onUpdate }: { lead: Lead; onClose: () => vo
     if (form.createdBy) localStorage.setItem("crmUser", form.createdBy);
     await fetch("/api/follow-ups", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify({ inquiryId: lead.id, ...form, nextFollowUpDate: form.nextFollowUpDate || null }),
     });
     setForm(f => ({ ...f, notes: "", nextFollowUpDate: "" }));
@@ -147,7 +147,7 @@ function LeadDrawer({ lead, onClose, onUpdate }: { lead: Lead; onClose: () => vo
   const moveStage = async (status: string) => {
     await fetch("/api/inquiries", {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify({ id: lead.id, status }),
     });
     onUpdate();
@@ -302,7 +302,7 @@ function DueFollowUps({ leads }: { leads: Lead[] }) {
   const [due, setDue] = useState<any[]>([]);
 
   useEffect(() => {
-    fetch("/api/follow-ups")
+    fetch("/api/follow-ups", { headers: authHeaders() })
       .then(r => r.json())
       .then(data => {
         if (!Array.isArray(data)) return;
@@ -331,6 +331,9 @@ function DueFollowUps({ leads }: { leads: Lead[] }) {
   );
 }
 
+const TOKEN_KEY = "pir_admin_token";
+const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem(TOKEN_KEY) || ""}` });
+
 // ─── Main CRM Page ────────────────────────────────────────────────────
 export default function CRMPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -341,7 +344,7 @@ export default function CRMPage() {
 
   const load = async () => {
     setLoading(true);
-    const data = await fetch("/api/inquiries").then(r => r.json());
+    const data = await fetch("/api/inquiries", { headers: authHeaders() }).then(r => r.json());
     setLeads(Array.isArray(data) ? data.reverse() : []);
     setLoading(false);
   };
