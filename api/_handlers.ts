@@ -520,6 +520,17 @@ async function handleBookings(req: VercelRequest, res: VercelResponse, sub: stri
     return res.json(row);
   }
 
+  // PATCH /api/bookings/:id/mark-paid — mark cash/manual payment as confirmed
+  if (req.method === "PATCH" && id && action === "mark-paid") {
+    try { requireAdmin(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
+    const { note } = z.object({ note: z.string().optional() }).parse(req.body);
+    const [row] = await db.update(bookings).set({
+      status: "confirmed",
+      razorpayPaymentId: note || "CASH",
+    }).where(eq(bookings.id, id)).returning();
+    return res.json(row);
+  }
+
   // DELETE /api/bookings/cleanup?days=30  — delete past bookings older than N days (admin only)
   if (req.method === "DELETE" && action === "cleanup") {
     try { requireAdmin(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
