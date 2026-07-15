@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
+import { Link } from "wouter";
 import {
-  Users, Phone, MessageCircle, ChevronRight, X, Plus,
+  Users, Phone, MessageCircle, ChevronRight, ChevronLeft, X, Plus,
   Clock, CheckCircle, XCircle, TrendingUp, Calendar,
   ArrowRight, Save, AlertCircle, BarChart3
 } from "lucide-react";
@@ -364,6 +365,7 @@ export default function CRMPage() {
       {selected && <LeadDrawer lead={selected} onClose={() => setSelected(null)} onUpdate={load} />}
 
       <div className="max-w-7xl mx-auto">
+        <Link href="/admin" className="inline-flex items-center gap-1.5 text-sm text-yellow-400/70 hover:text-yellow-400 transition-colors mb-6"><ChevronLeft className="h-4 w-4" /> Dashboard</Link>
         {/* Header */}
         <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
           <div className="flex items-center gap-3">

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { CalendarDays, CheckCircle, Clock, Users } from "lucide-react";
+import { Link } from "wouter";
+import { CalendarDays, CheckCircle, Clock, Users, ChevronLeft } from "lucide-react";
 
 const TODAY = new Date().toISOString().split("T")[0];
 
@@ -24,6 +25,7 @@ export default function AttendancePage() {
   return (
     <div className="min-h-screen bg-[#0a0f1e] text-white p-4 md:p-8">
       <div className="max-w-4xl mx-auto">
+        <Link href="/admin" className="inline-flex items-center gap-1.5 text-sm text-yellow-400/70 hover:text-yellow-400 transition-colors mb-6"><ChevronLeft className="h-4 w-4" /> Dashboard</Link>
         <div className="flex items-center gap-3 mb-8">
           <CalendarDays className="h-7 w-7 text-yellow-400" />
           <div>
