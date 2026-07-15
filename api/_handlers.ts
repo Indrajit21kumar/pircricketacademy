@@ -290,6 +290,16 @@ async function handleAdmissions(req: VercelRequest, res: VercelResponse, sub: st
     return res.json(row);
   }
 
+  if (req.method === "PATCH" && id && action === "mark-paid") {
+    try { requireAdmin(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
+    const { amount, note } = z.object({ amount: z.number().positive(), note: z.string().optional() }).parse(req.body);
+    const [row] = await db.update(admissions).set({
+      paymentStatus: "paid", totalPaid: amount, paidAt: new Date(),
+      razorpayPaymentId: note || "CASH",
+    }).where(eq(admissions.id, id)).returning();
+    return res.json(row);
+  }
+
   if (req.method === "DELETE" && id) {
     try { requireAdmin(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
     await db.delete(admissions).where(eq(admissions.id, id));
