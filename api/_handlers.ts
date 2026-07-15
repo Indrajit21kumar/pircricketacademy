@@ -15,6 +15,26 @@ import jwt from "jsonwebtoken";
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) throw new Error("JWT_SECRET environment variable is not set");
 
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "kumarindrajitcricket@gmail.com";
+
+// Simple in-memory brute-force guard (resets on cold start, good enough for serverless)
+const loginAttempts: Record<string, { count: number; lockedUntil: number }> = {};
+function checkBruteForce(ip: string): void {
+  const now = Date.now();
+  const entry = loginAttempts[ip] || { count: 0, lockedUntil: 0 };
+  if (entry.lockedUntil > now) throw Object.assign(new Error("Too many failed attempts. Try again in 15 minutes."), { status: 429 });
+  loginAttempts[ip] = entry;
+}
+function recordFailedLogin(ip: string): void {
+  const entry = loginAttempts[ip] || { count: 0, lockedUntil: 0 };
+  entry.count += 1;
+  if (entry.count >= 5) entry.lockedUntil = Date.now() + 15 * 60 * 1000;
+  loginAttempts[ip] = entry;
+}
+function clearLoginAttempts(ip: string): void {
+  delete loginAttempts[ip];
+}
+
 // ── Auth helpers ───────────────────────────────────────────────────────────────
 function authenticate(req: VercelRequest): any {
   const auth = req.headers.authorization;
@@ -46,11 +66,14 @@ async function handleAuth(req: VercelRequest, res: VercelResponse, sub: string[]
     return res.status(201).json({ ok: true });
   }
   if (action === "login" && req.method === "POST") {
+    const ip = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() || "unknown";
+    try { checkBruteForce(ip); } catch (e: any) { return res.status(429).json({ error: e.message }); }
     const { username, password } = req.body;
     const [user] = await db.select().from(users).where(eq(users.username, username));
-    if (!user) return res.status(401).json({ error: "Invalid credentials" });
+    if (!user) { recordFailedLogin(ip); return res.status(401).json({ error: "Invalid credentials" }); }
     const valid = await bcrypt.compare(password, user.passwordHash);
-    if (!valid) return res.status(401).json({ error: "Invalid credentials" });
+    if (!valid) { recordFailedLogin(ip); return res.status(401).json({ error: "Invalid credentials" }); }
+    clearLoginAttempts(ip);
     const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET!, { expiresIn: "7d" });
     return res.json({ token, user: { id: user.id, username: user.username, role: user.role, name: user.name } });
   }
@@ -112,7 +135,7 @@ async function sendAdmissionNotifications(data: {
   emergencyName: string; emergencyPhone: string; dob: string; address?: string;
   razorpayPaymentId?: string; admissionId: number;
 }) {
-  const adminEmail = process.env.ADMIN_EMAIL || "PIRcricketHub@gmail.com";
+  const adminEmail = ADMIN_EMAIL;
   const adminPhone = process.env.ADMIN_PHONE || "7903053204";
   const type = data.isTrial ? "Free Trial Session" : "Admission Application";
 
@@ -320,7 +343,7 @@ async function sendBookingNotifications(booking: {
 }) {
   const { ref, name, phone, email, facilityName, date, slot, duration, total } = booking;
   const adminPhone = process.env.ADMIN_PHONE || "7903053204";
-  const adminEmail = process.env.ADMIN_EMAIL || "PIRcricketHub@gmail.com";
+  const adminEmail = ADMIN_EMAIL;
 
   const customerMsg = `✅ *Booking Confirmed!*\n\nHi ${name}, your booking at PIR Cricket Academy is confirmed.\n\n🏟️ *Facility:* ${facilityName}\n📅 *Date:* ${date}\n⏰ *Time:* ${slot}\n⏱️ *Duration:* ${duration} hour${duration > 1 ? "s" : ""}\n💰 *Amount Paid:* ₹${total.toLocaleString()}\n🎫 *Ref:* ${ref}\n\nSee you on the ground! 🏏\n- PIR Cricket Academy`;
 
@@ -1089,7 +1112,7 @@ export async function handlePasswordReset(req: VercelRequest, res: VercelRespons
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
     await db.insert(passwordResets).values({ username, token, expiresAt });
     const resetUrl = `${process.env.FRONTEND_URL || "https://pircricketacademy.co.in"}/admin?reset=${token}`;
-    const adminEmail = process.env.ADMIN_EMAIL || "PIRcricketHub@gmail.com";
+    const adminEmail = ADMIN_EMAIL;
     await sendEmail(
       adminEmail,
       "PIRcricketHub — Admin Password Reset",
