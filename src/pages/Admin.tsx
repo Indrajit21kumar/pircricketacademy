@@ -182,6 +182,8 @@ export default function Admin() {
   const [markPaidAdm, setMarkPaidAdm] = useState<Admission | null>(null);
   const [markPaidAmount, setMarkPaidAmount] = useState("");
   const [markPaidNote, setMarkPaidNote] = useState("");
+  const [markPaidBooking, setMarkPaidBooking] = useState<Booking | null>(null);
+  const [markPaidBookingNote, setMarkPaidBookingNote] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -508,6 +510,7 @@ export default function Admin() {
                       <th className="text-left p-4">Ref</th><th className="text-left p-4">Facility</th>
                       <th className="text-left p-4">Date / Time</th><th className="text-left p-4">Customer</th>
                       <th className="text-left p-4">Amount</th><th className="text-left p-4">Status</th>
+                      <th className="text-left p-4">Action</th>
                     </tr></thead>
                     <tbody>
                       {bookings.map((b,i)=>(
@@ -518,6 +521,14 @@ export default function Admin() {
                           <td className="p-4">{b.name}</td>
                           <td className="p-4 font-bold text-secondary">₹{b.total.toLocaleString()}</td>
                           <td className="p-4"><StatusBadge s={b.status} /></td>
+                          <td className="p-4">
+                            {b.status === "pending_payment" && (
+                              <button
+                                onClick={() => { setMarkPaidBooking(b); setMarkPaidBookingNote(""); }}
+                                className="text-xs bg-green-500/10 text-green-400 border border-green-500/30 rounded-lg px-3 py-1.5 hover:bg-green-500/20 transition-colors font-semibold"
+                              >✓ Mark Paid</button>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -528,7 +539,41 @@ export default function Admin() {
           </motion.div>
         )}
 
-        {tab==="Fees"      && <FeesTab apiFetch={apiFetch} />}
+        {/* Mark Paid Modal — Bookings */}
+      {markPaidBooking && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4" onClick={() => setMarkPaidBooking(null)}>
+          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+            <h3 className="font-bold text-lg mb-1">Mark Booking as Paid</h3>
+            <p className="text-muted-foreground text-sm mb-1">{markPaidBooking.name} — {markPaidBooking.facilityName}</p>
+            <p className="text-secondary font-bold text-lg mb-4">₹{markPaidBooking.total.toLocaleString()}</p>
+            <div className="mb-5">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">Reference / Note (optional)</label>
+              <input
+                value={markPaidBookingNote}
+                onChange={e => setMarkPaidBookingNote(e.target.value)}
+                className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-secondary"
+                placeholder="Cash / UPI ref / Receipt no."
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={async () => {
+                  await apiFetch(`/bookings/${markPaidBooking.id}/mark-paid`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ note: markPaidBookingNote || undefined }),
+                  });
+                  setMarkPaidBooking(null);
+                  load();
+                }}
+                className="flex-1 bg-green-500 text-white font-bold py-2.5 rounded-xl hover:bg-green-400 transition-colors text-sm"
+              >Confirm Payment</button>
+              <button onClick={() => setMarkPaidBooking(null)} className="flex-1 border border-border rounded-xl py-2.5 text-sm font-semibold hover:bg-muted/30 transition-colors">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tab==="Fees"      && <FeesTab apiFetch={apiFetch} />}
         {tab==="Coaches"   && <CoachesTab apiFetch={apiFetch} />}
         {tab==="Discounts" && <DiscountsTab apiFetch={apiFetch} />}
 
