@@ -289,6 +289,13 @@ async function handleAdmissions(req: VercelRequest, res: VercelResponse, sub: st
     const [row] = await db.update(admissions).set({ status }).where(eq(admissions.id, id)).returning();
     return res.json(row);
   }
+
+  if (req.method === "DELETE" && id) {
+    try { requireAdmin(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
+    await db.delete(admissions).where(eq(admissions.id, id));
+    return res.json({ ok: true });
+  }
+
   return res.status(405).json({ error: "Method not allowed" });
 }
 

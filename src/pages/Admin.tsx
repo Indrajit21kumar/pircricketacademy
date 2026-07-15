@@ -327,13 +327,27 @@ export default function Admin() {
 
             <div className="grid md:grid-cols-2 gap-6">
               <div className="bg-card border border-border rounded-2xl p-6">
-                <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground mb-4">Recent Applications</h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-sm uppercase tracking-wider text-muted-foreground">Recent Applications</h3>
+                  <button onClick={() => setTab("Admissions")} className="text-xs text-secondary hover:underline">View all →</button>
+                </div>
                 {admissions.length === 0 ? <p className="text-muted-foreground text-sm">No applications yet.</p> :
                   <div className="space-y-3">
                     {admissions.slice(0,5).map(a=>(
-                      <div key={a.id} className="flex items-center justify-between">
+                      <div key={a.id} className="flex items-center justify-between gap-2 group">
                         <div><p className="font-semibold text-sm">{a.studentName}</p><p className="text-xs text-muted-foreground">{a.ageGroup} · {a.parentName}</p></div>
-                        <StatusBadge s={a.status} />
+                        <div className="flex items-center gap-2 shrink-0">
+                          <StatusBadge s={a.status} />
+                          <button
+                            onClick={async () => {
+                              if (!confirm(`Delete application for ${a.studentName}? This cannot be undone.`)) return;
+                              await apiFetch(`/admissions/${a.id}`, { method: "DELETE" });
+                              load();
+                            }}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity text-red-400 hover:text-red-300 text-xs border border-red-400/30 hover:border-red-400/60 px-2 py-0.5 rounded-lg"
+                            title="Delete application"
+                          >✕</button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -444,7 +458,6 @@ export default function Admin() {
                         )}
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        {/* Payment status badge */}
                         <span className={`text-xs font-bold px-2 py-1 rounded-full whitespace-nowrap ${
                           a.paymentStatus==="paid" ? "bg-green-400/10 text-green-400" :
                           a.paymentStatus==="pending" ? "bg-yellow-400/10 text-yellow-400" :
@@ -457,6 +470,14 @@ export default function Admin() {
                         {["new","trial_scheduled","joined","rejected"].map(s=>(
                           s !== a.status && <button key={s} onClick={()=>updateStatus("admissions",a.id,s)} className="text-xs border border-border rounded-lg px-2.5 py-1 text-muted-foreground hover:text-foreground transition-colors">→ {s.replace("_"," ")}</button>
                         ))}
+                        <button
+                          onClick={async () => {
+                            if (!confirm(`Delete application for ${a.studentName}? This cannot be undone.`)) return;
+                            await apiFetch(`/admissions/${a.id}`, { method: "DELETE" });
+                            load();
+                          }}
+                          className="text-xs text-red-400 hover:text-red-300 border border-red-400/30 hover:border-red-400/60 px-2.5 py-1 rounded-lg transition-colors"
+                        >🗑 Delete</button>
                       </div>
                     </div>
                   </div>
