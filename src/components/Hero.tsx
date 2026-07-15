@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Link } from "wouter";
 import { Trophy, ChevronRight } from "lucide-react";
 
-const LAUNCH = new Date("2026-08-01T00:00:00+05:30");
+const LAUNCH = new Date("2026-08-20T00:00:00+05:30");
 
 function pad(n: number) { return String(n).padStart(2, "0"); }
 
@@ -36,8 +36,8 @@ export default function Hero() {
   return (
     <section className="relative min-h-screen flex items-center justify-center pt-20 overflow-hidden">
       <div className="absolute inset-0 z-0">
-        <img src="/images/indrajit-century.jpeg" alt="" className="w-full h-full object-cover object-top" />
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-900/95 via-blue-950/90 to-slate-900/95" />
+        <img src="/images/pir-facility-collage.png" alt="" className="w-full h-full object-cover object-center" />
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-900/80 via-blue-950/65 to-slate-900/80" />
         <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 20% 50%, #eab308 0%, transparent 50%), radial-gradient(circle at 80% 20%, #1e40af 0%, transparent 50%)" }} />
       </div>
 
@@ -69,7 +69,7 @@ export default function Hero() {
         </motion.p>
 
         <motion.p initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} transition={{duration:0.5,delay:0.3}} className="text-gray-300 text-lg md:text-xl mb-8 max-w-2xl mx-auto">
-          {done ? "PIR Cricket Academy is now open. Enrol today." : "Opening August/September 2026 in Patna, Bihar. Early Admissions Now Open — Founding Batch Seats Limited."}
+          {done ? "PIR Cricket Academy is now open. Enrol today." : "Opening 20th August 2026 in Patna, Bihar. Early Admissions Now Open — Founding Batch Seats Limited."}
         </motion.p>
 
         {!done && (
