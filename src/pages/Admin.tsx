@@ -179,6 +179,9 @@ export default function Admin() {
   const [loading, setLoading] = useState(false);
   const [cleanupDays, setCleanupDays] = useState(30);
   const [cleanupMsg, setCleanupMsg] = useState("");
+  const [markPaidAdm, setMarkPaidAdm] = useState<Admission | null>(null);
+  const [markPaidAmount, setMarkPaidAmount] = useState("");
+  const [markPaidNote, setMarkPaidNote] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -470,6 +473,12 @@ export default function Admin() {
                         {["new","trial_scheduled","joined","rejected"].map(s=>(
                           s !== a.status && <button key={s} onClick={()=>updateStatus("admissions",a.id,s)} className="text-xs border border-border rounded-lg px-2.5 py-1 text-muted-foreground hover:text-foreground transition-colors">→ {s.replace("_"," ")}</button>
                         ))}
+                        {a.paymentStatus !== "paid" && (
+                          <button
+                            onClick={() => { setMarkPaidAdm(a); setMarkPaidAmount(String(a.totalPaid || 5000)); setMarkPaidNote(""); }}
+                            className="text-xs text-green-400 hover:text-green-300 border border-green-400/30 hover:border-green-400/60 px-2.5 py-1 rounded-lg transition-colors"
+                          >✓ Mark Paid</button>
+                        )}
                         <button
                           onClick={async () => {
                             if (!confirm(`Delete application for ${a.studentName}? This cannot be undone.`)) return;
@@ -524,6 +533,52 @@ export default function Admin() {
         {tab==="Discounts" && <DiscountsTab apiFetch={apiFetch} />}
 
       </div>
+
+      {/* Mark Paid Modal */}
+      {markPaidAdm && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4" onClick={() => setMarkPaidAdm(null)}>
+          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+            <h3 className="font-bold text-lg mb-1">Mark as Paid</h3>
+            <p className="text-muted-foreground text-sm mb-4">{markPaidAdm.studentName} — {markPaidAdm.parentName}</p>
+            <div className="space-y-3 mb-5">
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">Amount Received (₹) *</label>
+                <input
+                  type="number"
+                  value={markPaidAmount}
+                  onChange={e => setMarkPaidAmount(e.target.value)}
+                  className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-secondary"
+                  placeholder="5000"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">Reference / Note (optional)</label>
+                <input
+                  value={markPaidNote}
+                  onChange={e => setMarkPaidNote(e.target.value)}
+                  className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-secondary"
+                  placeholder="Cash / UPI ref / Receipt no."
+                />
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={async () => {
+                  if (!markPaidAmount) return;
+                  await apiFetch(`/admissions/${markPaidAdm.id}/mark-paid`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ amount: parseInt(markPaidAmount), note: markPaidNote || undefined }),
+                  });
+                  setMarkPaidAdm(null);
+                  load();
+                }}
+                className="flex-1 bg-green-500 text-white font-bold py-2.5 rounded-xl hover:bg-green-400 text-sm transition-colors"
+              >Confirm Paid</button>
+              <button onClick={() => setMarkPaidAdm(null)} className="border border-border text-muted-foreground px-4 py-2.5 rounded-xl text-sm">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
