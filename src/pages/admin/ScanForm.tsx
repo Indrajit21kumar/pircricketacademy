@@ -105,6 +105,19 @@ export default function ScanFormPage() {
 
   const submitAdmission = async () => {
     if (!scanned) return;
+    // Validate required fields before hitting the API
+    const missing: string[] = [];
+    if (!scanned.sn?.trim()) missing.push("Student Name");
+    if (!scanned.dob?.trim()) missing.push("Date of Birth");
+    if (!scanned.ag?.trim()) missing.push("Age Group");
+    if (!scanned.pn?.trim()) missing.push("Parent Name");
+    if (!scanned.ph?.trim()) missing.push("Phone");
+    if (!scanned.em?.trim()) missing.push("Email");
+    if (missing.length > 0) {
+      setSubmitError(`Missing required fields from form: ${missing.join(", ")}. Ask parent to refill the form with all fields.`);
+      setSubmitState("error");
+      return;
+    }
     setSubmitState("submitting");
     setSubmitError("");
     try {
@@ -114,19 +127,19 @@ export default function ScanFormPage() {
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
           studentName: scanned.sn,
-          dob: scanned.dob || "2000-01-01",
-          ageGroup: scanned.ag || "U16 (Under 16)",
-          school: scanned.sch || "",
-          bloodGroup: scanned.bg || "",
+          dob: scanned.dob,
+          ageGroup: scanned.ag,
+          school: scanned.sch || undefined,
+          bloodGroup: scanned.bg || undefined,
           parentName: scanned.pn,
           phone: scanned.ph,
-          email: scanned.em || "noemail@pircricket.in",
-          address: scanned.addr || "",
+          email: scanned.em,
+          address: scanned.addr || undefined,
           emergencyName: scanned.en || scanned.pn,
           emergencyPhone: scanned.ep || scanned.ph,
           asthma: scanned.ast ?? false,
-          allergies: scanned.alg || "",
-          medicalNotes: scanned.med || "",
+          allergies: scanned.alg || undefined,
+          medicalNotes: scanned.med || undefined,
           consentMedical: true, consentPhoto: true,
           consentLiability: true, consentTerms: true, consentData: true,
           isTrial: false,

@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import QRCode from "qrcode";
 
-const AGE_GROUPS = ["U8 (Under 8)", "U10 (Under 10)", "U12 (Under 12)", "U14 (Under 14)", "U16 (Under 16)", "U19 (Under 19)", "Elite (19+)"];
-const BLOOD_GROUPS = ["A+", "A−", "B+", "B−", "AB+", "AB−", "O+", "O−", "Unknown"];
+const AGE_GROUPS = ["U8 (Under 8)", "U12 (Under 12)", "U16 (Under 16)", "U19 (Under 19)", "Elite", "Not sure — need assessment"];
+const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "Unknown"];
 
 type Form = {
   studentName: string; dob: string; ageGroup: string; school: string;
@@ -136,8 +136,8 @@ export default function AdmissionFormPrint() {
               <Input type="tel" value={form.phone} onChange={e => f("phone", e.target.value)} placeholder="+91 XXXXX XXXXX" />
             </div>
             <div>
-              <Label>Email Address</Label>
-              <Input type="email" value={form.email} onChange={e => f("email", e.target.value)} placeholder="optional" />
+              <Label>Email Address *</Label>
+              <Input type="email" value={form.email} onChange={e => f("email", e.target.value)} placeholder="parent@example.com" />
             </div>
             <div className="col-span-2">
               <Label>Residential Address *</Label>
