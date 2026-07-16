@@ -252,14 +252,12 @@ export default function Curriculum() {
   const [activeGroup, setActiveGroup] = useState<GroupId>("foundation");
   const [expandedMonth, setExpandedMonth] = useState<number | null>(null);
   const [role] = useState<string | null>(() => {
-    const admin   = localStorage.getItem("pir_admin_token");
-    const coach   = localStorage.getItem("pir_coach_token");
-    const rec     = localStorage.getItem("pir_reception_token");
-    const student = sessionStorage.getItem("pir_student_session");
-    if (admin)   return "admin";
-    if (coach)   return "coach";
-    if (rec)     return "receptionist";
-    if (student) return "student";
+    try {
+      if (localStorage.getItem("pir_admin_token"))     return "admin";
+      if (localStorage.getItem("pir_coach_token"))     return "coach";
+      if (localStorage.getItem("pir_reception_token")) return "receptionist";
+      if (sessionStorage.getItem("pir_student_session")) return "student";
+    } catch { /* private browsing may block storage access */ }
     return null;
   });
   const todayIdx = new Date().getDay(); // 0 = Sun
