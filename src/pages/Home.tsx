@@ -15,6 +15,7 @@ import Contact from "@/components/Contact";
 import Footer from "@/components/Footer";
 import StatsCounter from "@/components/StatsCounter";
 import BatchTimings from "@/components/BatchTimings";
+import TalentScholarship from "@/components/TalentScholarship";
 import FAQ from "@/components/FAQ";
 import FloatingCTA from "@/components/FloatingCTA";
 
@@ -77,6 +78,7 @@ export default function Home() {
       <FoundingBatch />
       <WhyPIRSection />
       <Programs />
+      <TalentScholarship />
       <Fees />
       <BatchTimings />
       <Facilities />

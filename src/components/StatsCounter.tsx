@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Users, Trophy, Star, Award, CalendarCheck, MapPin } from "lucide-react";
+import { Star, CalendarCheck, MapPin, BookOpen, Layers, Clock } from "lucide-react";
 
 interface Stat {
   icon: React.FC<{ className?: string }>;
@@ -11,13 +11,14 @@ interface Stat {
   color: string;
 }
 
+// Only factual, verifiable numbers — no invented student counts or satisfaction %
 const STATS: Stat[] = [
-  { icon: Users,        value: 120, suffix: "+", label: "Students Enrolled",    sub: "Across all age groups",        color: "text-blue-400" },
-  { icon: Award,        value: 4,   suffix: "",  label: "Certified Coaches",    sub: "BCCI L1 & L2 qualified",       color: "text-yellow-400" },
-  { icon: CalendarCheck,value: 12,  suffix: "",  label: "Months Curriculum",    sub: "ICC · BCCI · ECB · CA aligned", color: "text-emerald-400" },
-  { icon: Star,         value: 4,   suffix: "",  label: "Age Group Batches",    sub: "U8 · U12 · U16 · U19+",       color: "text-purple-400" },
-  { icon: Trophy,       value: 98,  suffix: "%", label: "Parent Satisfaction",  sub: "Based on quarterly feedback",   color: "text-orange-400" },
-  { icon: MapPin,       value: 1,   suffix: "",  label: "World-Class Facility", sub: "Anisabad, Patna — Bihar",       color: "text-red-400" },
+  { icon: Layers,        value: 4,   suffix: "",   label: "Age Group Batches",   sub: "U8 · U12 · U16 · U19+",        color: "text-blue-400" },
+  { icon: CalendarCheck, value: 12,  suffix: "",   label: "Months Curriculum",   sub: "ICC · BCCI · ECB · CA aligned",  color: "text-emerald-400" },
+  { icon: Clock,         value: 4,   suffix: "",   label: "Sessions / Week",     sub: "U19+ batch · others 3/week",     color: "text-yellow-400" },
+  { icon: BookOpen,      value: 6,   suffix: "",   label: "Training Phases",     sub: "Foundation → Competition",        color: "text-purple-400" },
+  { icon: Star,          value: 4,   suffix: "",   label: "Global Frameworks",   sub: "ICC · BCCI · ECB · Cricket AU",  color: "text-orange-400" },
+  { icon: MapPin,        value: 1,   suffix: "",   label: "World-Class Facility",sub: "Anisabad, Patna — Bihar",         color: "text-red-400" },
 ];
 
 function useCounter(target: number, active: boolean) {
@@ -48,7 +49,7 @@ function StatCard({ stat, index, active }: { stat: Stat; index: number; active: 
       transition={{ delay: index * 0.08, duration: 0.5 }}
       className="flex flex-col items-center text-center p-6 rounded-2xl bg-card border border-border hover:border-secondary/30 transition-all group"
     >
-      <div className={`w-12 h-12 rounded-xl bg-secondary/5 border border-secondary/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+      <div className="w-12 h-12 rounded-xl bg-secondary/5 border border-secondary/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
         <stat.icon className={`h-5 w-5 ${stat.color}`} />
       </div>
       <p className={`text-4xl font-black mb-1 ${stat.color}`}>
@@ -86,8 +87,9 @@ export default function StatsCounter() {
             PIR by the Numbers
           </span>
           <h2 className="font-display text-3xl md:text-4xl font-bold">
-            Why Families <span className="text-secondary">Trust PIR</span>
+            What Makes PIR <span className="text-secondary">Different</span>
           </h2>
+          <p className="text-muted-foreground text-sm mt-2">Bihar's first fully structured, globally-benchmarked cricket programme</p>
         </motion.div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {STATS.map((s, i) => <StatCard key={s.label} stat={s} index={i} active={active} />)}
