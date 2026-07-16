@@ -15,7 +15,7 @@ const STATS: Stat[] = [
   { icon: Users,        value: 120, suffix: "+", label: "Students Enrolled",    sub: "Across all age groups",        color: "text-blue-400" },
   { icon: Award,        value: 4,   suffix: "",  label: "Certified Coaches",    sub: "BCCI L1 & L2 qualified",       color: "text-yellow-400" },
   { icon: CalendarCheck,value: 12,  suffix: "",  label: "Months Curriculum",    sub: "ICC · BCCI · ECB · CA aligned", color: "text-emerald-400" },
-  { icon: Star,         value: 4,   suffix: "",  label: "Age Group Batches",    sub: "U10 · U14 · U17 · U19+",       color: "text-purple-400" },
+  { icon: Star,         value: 4,   suffix: "",  label: "Age Group Batches",    sub: "U8 · U12 · U16 · U19+",       color: "text-purple-400" },
   { icon: Trophy,       value: 98,  suffix: "%", label: "Parent Satisfaction",  sub: "Based on quarterly feedback",   color: "text-orange-400" },
   { icon: MapPin,       value: 1,   suffix: "",  label: "World-Class Facility", sub: "Anisabad, Patna — Bihar",       color: "text-red-400" },
 ];

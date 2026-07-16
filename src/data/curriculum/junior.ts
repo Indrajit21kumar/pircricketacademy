@@ -530,7 +530,7 @@ export const junior: AgeGroupData = {
     {
       month: "Aug 2027", shortMonth: "Aug",
       phase: "Phase 6 — Competition", phaseColor: "emerald",
-      monthGoal: "Final showcase, annual 5-pillar assessment, certificate ceremony, pathway planning for U17",
+      monthGoal: "Final showcase, annual 5-pillar assessment, certificate ceremony, pathway planning for U16",
       sessions: [
         {
           number: 1, day: "Monday", label: "Final Skills Showcase — Batting & Bowling", duration: "135 min",
@@ -551,7 +551,7 @@ export const junior: AgeGroupData = {
             "Final fielding skills showcase: catching and throwing challenge — scored",
             "Annual fitness re-test: 20m sprint, standing broad jump, plank hold",
             "Compare fitness scores to October 2026 baseline — celebrate every gain",
-            "Pathway conversation: is this player ready for U17 next season?",
+            "Pathway conversation: is this player ready for U16 next season?",
           ],
           gamePlay: "Final fielding challenge: team run-out relay — all players must touch the ball before it hits stumps",
           coachFocus: "Fitness re-test: share numbers with player AND parent. Concrete proof of physical development.",
@@ -563,14 +563,14 @@ export const junior: AgeGroupData = {
             "End-of-year festival match — all players bat and bowl, parents watching",
             "Annual report card shared: 5-pillar scores vs September 2026 baseline",
             "Certificate ceremony: every player receives annual completion certificate",
-            "U12 → U17 pathway recommendations shared with parents",
+            "U12 → U16 pathway recommendations shared with parents",
           ],
           gamePlay: "End-of-year festival match and awards day — full cricket match, parents invited",
           coachFocus: "Celebration: make every player proud of their year. The certificate matters more than the score.",
         },
       ],
-      assessment: "Annual 5-pillar assessment complete. Fitness re-test vs baseline. U17 pathway recommendation per player",
-      globalStandard: "ECB Full Year Assessment Framework. NCA Annual Review Standards. U17 promotion criteria",
+      assessment: "Annual 5-pillar assessment complete. Fitness re-test vs baseline. U16 pathway recommendation per player",
+      globalStandard: "ECB Full Year Assessment Framework. NCA Annual Review Standards. U16 promotion criteria",
     },
   ],
 };

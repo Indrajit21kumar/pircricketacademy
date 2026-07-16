@@ -110,7 +110,7 @@ export default function Hero() {
               {/* 4 stat chips */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
                 {[
-                  { icon: Users,    val: "4", sub: "Age Groups", detail: "U8 · U12 · U17 · U19+" },
+                  { icon: Users,    val: "4", sub: "Age Groups", detail: "U8 · U12 · U16 · U19+" },
                   { icon: Calendar, val: "12", sub: "Months", detail: "Sep 2026 – Aug 2027" },
                   { icon: BookOpen, val: "3–4", sub: "Sessions/Week", detail: "Structured & documented" },
                   { icon: Trophy,   val: "ICC+", sub: "Benchmarked", detail: "BCCI · ECB · Cricket Australia" },

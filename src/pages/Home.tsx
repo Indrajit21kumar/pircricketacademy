@@ -14,7 +14,6 @@ import Gallery from "@/components/Gallery";
 import Contact from "@/components/Contact";
 import Footer from "@/components/Footer";
 import StatsCounter from "@/components/StatsCounter";
-import Testimonials from "@/components/Testimonials";
 import BatchTimings from "@/components/BatchTimings";
 import FAQ from "@/components/FAQ";
 import FloatingCTA from "@/components/FloatingCTA";
@@ -78,7 +77,6 @@ export default function Home() {
       <FoundingBatch />
       <WhyPIRSection />
       <Programs />
-      <Testimonials />
       <Fees />
       <BatchTimings />
       <Facilities />

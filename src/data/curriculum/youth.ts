@@ -1,13 +1,13 @@
-// Youth U17 — 3 sessions/week: Wednesday · Saturday · Sunday
-// Source: PIR-Cricket-Academy-U17-Curriculum.docx (actual academy document)
+// Youth U16 — 3 sessions/week: Wednesday · Saturday · Sunday
+// Source: PIR-Cricket-Academy-U16-Curriculum.docx (actual academy document)
 // Session 1 (Wed): Batting + Bowling · Session 2 (Sat): Batting + Fielding/WK · Session 3 (Sun): Batting + Match Simulation
 import type { AgeGroupData } from "./types";
 
 export const youth: AgeGroupData = {
   id: "youth",
   label: "Youth",
-  tag: "U17",
-  ageRange: "Ages 13–17",
+  tag: "U16",
+  ageRange: "Ages 13–16",
   accentColor: "purple",
   desc: "Technical mastery and competitive application.",
   trainingDays: ["Wednesday", "Saturday", "Sunday"],
@@ -155,7 +155,7 @@ export const youth: AgeGroupData = {
         },
       ],
       assessment: "Advanced batting technique scored. Seam bowling channel consistency recorded. Fielding circuit scores",
-      globalStandard: "ECB Batting Shot Pathway (advanced). NCA Youth Technique Standards for U17",
+      globalStandard: "ECB Batting Shot Pathway (advanced). NCA Youth Technique Standards for U16",
     },
     {
       month: "Dec 2026", shortMonth: "Dec",
@@ -564,7 +564,7 @@ export const youth: AgeGroupData = {
             "End-of-year festival match — all players bat and bowl, parents and guests watching",
             "Annual report card: 5-pillar scores vs September 2026 baseline — shared",
             "Certificate ceremony: every player receives annual completion certificate",
-            "U17 → U19+ pathway recommendations shared privately with players and parents",
+            "U16 → U19+ pathway recommendations shared privately with players and parents",
           ],
           gamePlay: "End-of-year festival match and awards day — full cricket, parents invited",
           coachFocus: "Celebration: recognise the whole year's journey. Every player deserves a proud moment.",
