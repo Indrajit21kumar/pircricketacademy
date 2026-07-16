@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import { CheckCircle, Users, Star, Trophy, BarChart3, Zap, Tag } from "lucide-react";
 
 const benefits = [
-  { icon: Tag,        text: "25% Off Admission Fee — Pre-Launch Discount (Before 20 Aug 2026)" },
+  { icon: Tag,        text: "Founding Batch Pricing Locked In for the Full Season" },
   { icon: Users,      text: "Priority Batch Allocation — choose your preferred timing" },
   { icon: Star,       text: "Founding Student Recognition — lifetime academy record" },
   { icon: Trophy,     text: "Personalised Development Tracking from Day One" },
@@ -56,7 +56,7 @@ export default function FoundingBatch() {
               <Link href="/admissions" className="w-full bg-secondary text-secondary-foreground font-bold uppercase tracking-wide py-4 rounded-xl hover:bg-secondary/90 transition-all shadow-[0_0_20px_rgba(234,179,8,0.2)] text-base text-center block">
                 Apply for Founding Batch
               </Link>
-              <p className="text-center text-muted-foreground text-xs">Free registration · No commitment · Discount applied at enrolment</p>
+              <p className="text-center text-muted-foreground text-xs">Free registration · No commitment · Seat confirmed within 24 hours</p>
             </div>
           </div>
         </motion.div>
