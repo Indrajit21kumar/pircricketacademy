@@ -100,9 +100,9 @@ describe("Hero component", () => {
       expect(screen.getByText(/Strength & Fitness/i)).toBeInTheDocument();
     });
 
-    it("shows 'Indoor Nets' pill", () => {
+    it("shows 'Night Practice Available' pill", () => {
       render(<Hero />);
-      expect(screen.getByText(/Indoor Nets/i)).toBeInTheDocument();
+      expect(screen.getByText(/Night Practice Available/i)).toBeInTheDocument();
     });
   });
 

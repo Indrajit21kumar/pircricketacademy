@@ -361,7 +361,8 @@ export default function Admissions() {
               {form.isTrial && <div><label className="label">Preferred Trial Date</label><input type="date" value={form.trialDate} onChange={e=>f("trialDate",e.target.value)} className="inp"/></div>}
             </div>
             <button type="button" onClick={()=>{ if(validateStep1()) setStep(2); }}
-              className="w-full bg-secondary text-secondary-foreground font-bold uppercase py-4 rounded-xl hover:bg-secondary/90 transition-all flex items-center justify-center gap-2">
+              disabled={!form.studentName.trim() || !form.dob || !form.ageGroup || !form.address.trim()}
+              className="w-full bg-secondary text-secondary-foreground font-bold uppercase py-4 rounded-xl hover:bg-secondary/90 transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
               Continue <ArrowRight className="h-5 w-5"/>
             </button>
           </motion.div>

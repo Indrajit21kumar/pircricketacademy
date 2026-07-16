@@ -137,6 +137,24 @@ describe("GET /bookings", () => {
     expect(res._status).toBe(401);
   });
 
+  it("returns 403 for coach role (coaches cannot view all bookings)", async () => {
+    const coachToken = jwt.sign({ id: 2, username: "coach1", role: "coach" }, SECRET, { expiresIn: "1h" });
+    const req = makeReq("GET", {}, { authorization: `Bearer ${coachToken}` });
+    const res = makeRes();
+    await handleBookings(req, res, []);
+    expect(res._status).toBe(403);
+  });
+
+  it("returns 200 for receptionist role (front desk can view bookings)", async () => {
+    const rows = [{ id: 1, ref: "PIR001", status: "confirmed" }];
+    mockDb.select.mockImplementationOnce(() => mockDb._chain(rows));
+    const recToken = jwt.sign({ id: 3, username: "front.desk", role: "receptionist" }, SECRET, { expiresIn: "1h" });
+    const req = makeReq("GET", {}, { authorization: `Bearer ${recToken}` });
+    const res = makeRes();
+    await handleBookings(req, res, []);
+    expect(res._status).toBe(200);
+  });
+
   it("returns all bookings as an array for admin", async () => {
     const rows = [{ id: 1, ref: "PIR001", status: "confirmed" }];
     mockDb.select.mockImplementationOnce(() => mockDb._chain(rows));

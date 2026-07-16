@@ -83,12 +83,23 @@ describe("GET /admissions", () => {
     expect(res._status).toBe(401);
   });
 
-  it("returns 403 when a non-admin token is used", async () => {
+  it("returns 403 when a coach token is used (coaches cannot view admissions)", async () => {
     const coachToken = jwt.sign({ id: 2, username: "coach1", role: "coach" }, SECRET, { expiresIn: "1h" });
     const req = makeReq("GET", {}, { authorization: `Bearer ${coachToken}` });
     const res = makeRes();
     await handleAdmissions(req, res, []);
     expect(res._status).toBe(403);
+  });
+
+  it("returns 200 for receptionist role (front desk can view admissions)", async () => {
+    const rows = [{ id: 1, studentName: "Rahul", status: "new" }];
+    mockDb.select.mockImplementationOnce(() => mockDb._chain(rows));
+    const recToken = jwt.sign({ id: 3, username: "front.desk", role: "receptionist" }, SECRET, { expiresIn: "1h" });
+    const req = makeReq("GET", {}, { authorization: `Bearer ${recToken}` });
+    const res = makeRes();
+    await handleAdmissions(req, res, []);
+    expect(res._status).toBe(200);
+    expect(Array.isArray(res._body)).toBe(true);
   });
 
   it("returns 200 and an array with a valid admin token", async () => {
