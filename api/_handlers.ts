@@ -1027,6 +1027,10 @@ async function handleUsers(req: VercelRequest, res: VercelResponse, sub: string[
     }).parse(req.body);
     const existing = await db.select().from(users).where(eq(users.username, data.username));
     if (existing.length > 0) return res.status(409).json({ error: "Username already exists" });
+    if (data.role === "receptionist") {
+      const existingRec = await db.select().from(users).where(eq(users.role, "receptionist"));
+      if (existingRec.length > 0) return res.status(409).json({ error: "A receptionist account already exists. Delete the existing one before creating a new one." });
+    }
     const passwordHash = await bcrypt.hash(data.password, 10);
     const [row] = await db.insert(users).values({ username: data.username, passwordHash, plainPassword: data.password, name: data.name, role: data.role }).returning({
       id: users.id, username: users.username, role: users.role, name: users.name, plainPassword: users.plainPassword, createdAt: users.createdAt,
