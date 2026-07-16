@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -251,28 +251,24 @@ const DAY_NAMES = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","
 export default function Curriculum() {
   const [activeGroup, setActiveGroup] = useState<GroupId>("foundation");
   const [expandedMonth, setExpandedMonth] = useState<number | null>(null);
-  const [role, setRole] = useState<string | null | "checking">("checking");
+  const [role] = useState<string | null>(() => {
+    const admin   = localStorage.getItem("pir_admin_token");
+    const coach   = localStorage.getItem("pir_coach_token");
+    const rec     = localStorage.getItem("pir_reception_token");
+    const student = sessionStorage.getItem("pir_student_session");
+    if (admin)   return "admin";
+    if (coach)   return "coach";
+    if (rec)     return "receptionist";
+    if (student) return "student";
+    return null;
+  });
   const todayIdx = new Date().getDay(); // 0 = Sun
   const todayName = DAY_NAMES[todayIdx];
-
-  useEffect(() => {
-    const admin = localStorage.getItem("pir_admin_token");
-    const coach = localStorage.getItem("pir_coach_token");
-    const rec   = localStorage.getItem("pir_reception_token");
-    const student = sessionStorage.getItem("pir_student_session");
-    if (admin) setRole("admin");
-    else if (coach) setRole("coach");
-    else if (rec) setRole("receptionist");
-    else if (student) setRole("student");
-    else setRole(null);
-  }, []);
 
   const group = AGE_GROUPS.find(g => g.id === activeGroup)!;
   const schedule = WEEKLY[activeGroup];
   const cls = accentClasses[group.accent];
   const todayPlan = schedule.find(d => d.day === todayName);
-
-  if (role === "checking") return null;
 
   if (role === null) return (
     <div className="min-h-screen bg-[#0a0f1e] flex items-center justify-center p-4">
