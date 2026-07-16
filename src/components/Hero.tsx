@@ -38,7 +38,7 @@ export default function Hero() {
 
       {/* Background image */}
       <div className="absolute inset-0 z-0">
-        <img src="/images/pir-facility-collage.png" alt="" className="w-full h-full object-cover object-center" />
+        <img src="/images/pir-facility-collage.png" alt="" className="w-full h-full object-cover object-left" />
         {/* Multi-layer overlay for depth + readability */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80" />
         <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse 80% 60% at 50% 45%, rgba(0,0,0,0.55) 0%, transparent 100%)" }} />

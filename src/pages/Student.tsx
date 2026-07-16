@@ -23,6 +23,9 @@ function LoginScreen({ onLogin }: { onLogin: (data: any) => void }) {
   return (
     <div className="min-h-screen bg-[#0a0f1e] flex items-center justify-center p-4">
       <motion.div initial={{opacity:0,y:30}} animate={{opacity:1,y:0}} className="w-full max-w-sm">
+        <div className="mb-4">
+          <Link href="/" className="text-gray-400 hover:text-white text-sm flex items-center gap-1">← Home</Link>
+        </div>
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-yellow-500/10 border-2 border-yellow-500/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <span className="font-bold text-yellow-400 text-2xl">PIR</span>

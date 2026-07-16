@@ -96,6 +96,9 @@ function LoginScreen({ onAuth, resetToken }: { onAuth: () => void; resetToken?: 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
       <motion.div initial={{opacity:0,y:30}} animate={{opacity:1,y:0}} className="bg-card border border-border rounded-2xl p-10 w-full max-w-sm">
+        <div className="flex justify-start mb-4">
+          <Link href="/" className="text-muted-foreground hover:text-foreground text-sm flex items-center gap-1">← Home</Link>
+        </div>
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-secondary/10 border-2 border-secondary/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <span className="font-display text-secondary text-2xl font-black">PIR</span>
