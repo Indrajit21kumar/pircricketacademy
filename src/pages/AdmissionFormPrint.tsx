@@ -75,6 +75,11 @@ export default function AdmissionFormPrint() {
       >
         {/* Header */}
         <div className="text-center border-b-4 border-yellow-500 pb-4 mb-6 print:mb-4">
+          <img
+            src="/images/pir-logo-400.png"
+            alt="PIR Cricket Academy"
+            className="w-20 h-20 object-contain mx-auto mb-2"
+          />
           <p className="text-xs font-bold uppercase tracking-widest text-yellow-600 mb-1">Under the Aegis of S.P Sports & Cultural Foundation</p>
           <h1 className="text-3xl font-black tracking-tight" style={{ color: "#0a0f1e" }}>PIR CRICKET ACADEMY</h1>
           <p className="text-sm text-gray-500 mt-1">Sector-A, Police Colony, Anisabad, Patna – 800002, Bihar</p>
