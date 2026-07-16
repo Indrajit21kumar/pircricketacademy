@@ -19,6 +19,7 @@ import ParentPortal from "@/pages/parent/Portal";
 import AdmissionFormPrint from "@/pages/AdmissionFormPrint";
 import ScanFormPage from "@/pages/admin/ScanForm";
 import ReceptionPortal from "@/pages/reception/Portal";
+import Curriculum from "@/pages/Curriculum";
 
 const qc = new QueryClient();
 
@@ -44,6 +45,7 @@ export default function App() {
         <Route path="/admission-form" component={AdmissionFormPrint} />
         <Route path="/admin/scan-form" component={ScanFormPage} />
         <Route path="/reception" component={ReceptionPortal} />
+        <Route path="/curriculum" component={Curriculum} />
         <Route component={NotFound} />
       </Switch>
     </QueryClientProvider>
