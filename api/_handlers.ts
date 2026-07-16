@@ -49,7 +49,12 @@ function requireAdmin(req: VercelRequest): any {
 }
 function requireStaff(req: VercelRequest): any {
   const claims = authenticate(req);
-  if (claims.role !== "admin" && claims.role !== "coach") throw Object.assign(new Error("Staff only"), { status: 403 });
+  if (claims.role !== "admin" && claims.role !== "coach" && claims.role !== "receptionist") throw Object.assign(new Error("Staff only"), { status: 403 });
+  return claims;
+}
+function requireAdminOrReception(req: VercelRequest): any {
+  const claims = authenticate(req);
+  if (claims.role !== "admin" && claims.role !== "receptionist") throw Object.assign(new Error("Not authorized"), { status: 403 });
   return claims;
 }
 
@@ -179,7 +184,7 @@ async function handleAdmissions(req: VercelRequest, res: VercelResponse, sub: st
   const action = id ? sub[1] : first;
 
   if (req.method === "GET") {
-    try { requireAdmin(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
+    try { requireAdminOrReception(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
     const all = await db.select().from(admissions).orderBy(admissions.createdAt);
     return res.json(all.reverse());
   }
@@ -291,7 +296,7 @@ async function handleAdmissions(req: VercelRequest, res: VercelResponse, sub: st
   }
 
   if (req.method === "PATCH" && id && action === "mark-paid") {
-    try { requireAdmin(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
+    try { requireAdminOrReception(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
     const { amount, note } = z.object({ amount: z.number().positive(), note: z.string().optional() }).parse(req.body);
     const [row] = await db.update(admissions).set({
       paymentStatus: "paid", totalPaid: amount, paidAt: new Date(),
@@ -414,9 +419,9 @@ async function handleBookings(req: VercelRequest, res: VercelResponse, sub: stri
     return res.json({ bookedSlots: Array.from(bookedSlots) });
   }
 
-  // GET /api/bookings?date=YYYY-MM-DD  — receptionist tracker (admin only)
+  // GET /api/bookings?date=YYYY-MM-DD  — receptionist tracker
   if (req.method === "GET") {
-    try { requireAdmin(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
+    try { requireAdminOrReception(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
     const { date } = req.query;
     const all = date
       ? await db.select().from(bookings).where(eq(bookings.date, date as string))
@@ -522,7 +527,7 @@ async function handleBookings(req: VercelRequest, res: VercelResponse, sub: stri
 
   // PATCH /api/bookings/:id/mark-paid — mark cash/manual payment as confirmed
   if (req.method === "PATCH" && id && action === "mark-paid") {
-    try { requireAdmin(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
+    try { requireAdminOrReception(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
     const { note } = z.object({ note: z.string().optional() }).parse(req.body);
     const [row] = await db.update(bookings).set({
       status: "confirmed",
@@ -578,7 +583,7 @@ async function handleBatches(req: VercelRequest, res: VercelResponse, sub: strin
 
 // ── Students ───────────────────────────────────────────────────────────────────
 async function handleStudents(req: VercelRequest, res: VercelResponse, sub: string[]) {
-  try { requireAdmin(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
+  try { requireAdminOrReception(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
   const id = sub[0] ? parseInt(sub[0]) : null;
   if (req.method === "GET") {
     const all = await db.select({ student: students, batch: batches })
@@ -1018,7 +1023,7 @@ async function handleUsers(req: VercelRequest, res: VercelResponse, sub: string[
   if (req.method === "POST") {
     const data = z.object({
       username: z.string().min(3), password: z.string().min(6),
-      name: z.string().min(1), role: z.enum(["coach", "admin", "student"]),
+      name: z.string().min(1), role: z.enum(["coach", "admin", "student", "receptionist"]),
     }).parse(req.body);
     const existing = await db.select().from(users).where(eq(users.username, data.username));
     if (existing.length > 0) return res.status(409).json({ error: "Username already exists" });

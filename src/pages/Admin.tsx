@@ -888,6 +888,7 @@ function CoachesTab({ apiFetch }: { apiFetch: (path: string, opts?: RequestInit)
   const roleColor = (role: string) =>
     role === "admin" ? "bg-secondary/10 text-secondary" :
     role === "student" ? "bg-purple-400/10 text-purple-400" :
+    role === "receptionist" ? "bg-green-400/10 text-green-400" :
     "bg-blue-400/10 text-blue-400";
 
   return (
@@ -917,7 +918,7 @@ function CoachesTab({ apiFetch }: { apiFetch: (path: string, opts?: RequestInit)
 
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="font-display text-3xl font-bold">Coach & Student Accounts</h2>
+          <h2 className="font-display text-3xl font-bold">Staff & Student Accounts</h2>
           <p className="text-muted-foreground">Manage login credentials — passwords visible to admin only</p>
         </div>
         <button onClick={() => setShowForm(v => !v)} className="bg-secondary text-secondary-foreground font-bold px-4 py-2.5 rounded-xl text-sm hover:bg-secondary/90">+ Add Account</button>
@@ -933,6 +934,7 @@ function CoachesTab({ apiFetch }: { apiFetch: (path: string, opts?: RequestInit)
             <div><label className="label">Role</label>
               <select className="inp" value={form.role} onChange={e => setForm({...form, role: e.target.value})}>
                 <option value="coach">Coach</option>
+                <option value="receptionist">Receptionist</option>
                 <option value="student">Student</option>
                 <option value="admin">Admin</option>
               </select>
