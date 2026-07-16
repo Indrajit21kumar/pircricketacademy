@@ -435,6 +435,7 @@ export default function CoachPortal() {
             <button onClick={() => navigate("/coach/scan")} className="flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 font-bold px-3 py-2 rounded-xl text-xs hover:bg-yellow-500/20">
               <QrCode className="h-4 w-4" /> Scan QR
             </button>
+            <Link href="/curriculum" className="text-xs text-yellow-400 border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 rounded-xl hover:bg-yellow-500/20 transition-colors font-bold">Curriculum</Link>
             <Link href="/" className="text-xs text-gray-500 hover:text-yellow-400 border border-gray-700 px-3 py-2 rounded-xl transition-colors">← Home</Link>
             <button onClick={logout} className="text-xs text-gray-500 hover:text-gray-300 border border-gray-700 px-3 py-2 rounded-xl flex items-center gap-1">
               <X className="h-3 w-3" /> Logout

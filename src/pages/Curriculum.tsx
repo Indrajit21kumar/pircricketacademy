@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -251,13 +251,46 @@ const DAY_NAMES = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","
 export default function Curriculum() {
   const [activeGroup, setActiveGroup] = useState<GroupId>("foundation");
   const [expandedMonth, setExpandedMonth] = useState<number | null>(null);
+  const [role, setRole] = useState<string | null | "checking">("checking");
   const todayIdx = new Date().getDay(); // 0 = Sun
   const todayName = DAY_NAMES[todayIdx];
+
+  useEffect(() => {
+    const admin = localStorage.getItem("pir_admin_token");
+    const coach = localStorage.getItem("pir_coach_token");
+    const rec   = localStorage.getItem("pir_reception_token");
+    const student = sessionStorage.getItem("pir_student_session");
+    if (admin) setRole("admin");
+    else if (coach) setRole("coach");
+    else if (rec) setRole("receptionist");
+    else if (student) setRole("student");
+    else setRole(null);
+  }, []);
 
   const group = AGE_GROUPS.find(g => g.id === activeGroup)!;
   const schedule = WEEKLY[activeGroup];
   const cls = accentClasses[group.accent];
   const todayPlan = schedule.find(d => d.day === todayName);
+
+  if (role === "checking") return null;
+
+  if (role === null) return (
+    <div className="min-h-screen bg-[#0a0f1e] flex items-center justify-center p-4">
+      <div className="text-center max-w-sm">
+        <div className="w-16 h-16 bg-yellow-500/10 border-2 border-yellow-500/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <span className="font-bold text-yellow-400 text-2xl">PIR</span>
+        </div>
+        <h1 className="text-2xl font-bold text-white mb-2">Members Only</h1>
+        <p className="text-gray-400 text-sm mb-6">The curriculum is available to enrolled students, coaches, and academy staff. Please log in to access it.</p>
+        <div className="flex flex-col gap-3">
+          <a href="/student" className="bg-yellow-500 text-black font-bold py-2.5 rounded-xl text-sm uppercase tracking-wider">Student Login</a>
+          <a href="/coach" className="bg-white/10 text-white font-bold py-2.5 rounded-xl text-sm uppercase tracking-wider hover:bg-white/20 transition-colors">Coach Login</a>
+          <a href="/admin" className="bg-white/10 text-white font-bold py-2.5 rounded-xl text-sm uppercase tracking-wider hover:bg-white/20 transition-colors">Admin Login</a>
+          <a href="/" className="text-gray-500 text-xs mt-1 hover:text-gray-300">← Back to Home</a>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -287,13 +320,15 @@ export default function Curriculum() {
             <p className="text-gray-500 text-sm mb-8">
               This curriculum is what drives every session at PIR Cricket Academy. Not coach intuition — proven global frameworks.
             </p>
-            <a
-              href="/pir-cricket-academy-curriculum.pdf"
-              download
-              className="inline-flex items-center gap-2 bg-secondary text-black font-bold px-7 py-3.5 rounded-xl hover:bg-secondary/90 transition-all shadow-[0_0_25px_rgba(234,179,8,0.35)] text-sm uppercase tracking-wide"
-            >
-              <Download className="h-4 w-4" /> Download Full Curriculum PDF
-            </a>
+            {role === "admin" && (
+              <a
+                href="/pir-cricket-academy-curriculum.pdf"
+                download
+                className="inline-flex items-center gap-2 bg-secondary text-black font-bold px-7 py-3.5 rounded-xl hover:bg-secondary/90 transition-all shadow-[0_0_25px_rgba(234,179,8,0.35)] text-sm uppercase tracking-wide"
+              >
+                <Download className="h-4 w-4" /> Download Full Curriculum PDF
+              </a>
+            )}
           </motion.div>
         </div>
       </div>
@@ -596,14 +631,20 @@ export default function Curriculum() {
           <p className="text-muted-foreground max-w-lg mx-auto mb-6">
             Download the complete 12-month curriculum PDF — perfect for parents, students and coaches to review offline.
           </p>
-          <a
-            href="/pir-cricket-academy-curriculum.pdf"
-            download
-            className="inline-flex items-center gap-2.5 bg-secondary text-black font-black uppercase tracking-wider px-8 py-4 rounded-xl hover:bg-secondary/90 transition-all shadow-[0_0_30px_rgba(234,179,8,0.3)] text-sm"
-          >
-            <Download className="h-5 w-5" /> Download Full Curriculum PDF
-          </a>
-          <p className="text-xs text-muted-foreground mt-4">A4 format · Suitable for printing · Updated annually</p>
+          {role === "admin" ? (
+            <>
+              <a
+                href="/pir-cricket-academy-curriculum.pdf"
+                download
+                className="inline-flex items-center gap-2.5 bg-secondary text-black font-black uppercase tracking-wider px-8 py-4 rounded-xl hover:bg-secondary/90 transition-all shadow-[0_0_30px_rgba(234,179,8,0.3)] text-sm"
+              >
+                <Download className="h-5 w-5" /> Download Full Curriculum PDF
+              </a>
+              <p className="text-xs text-muted-foreground mt-4">A4 format · Suitable for printing · Updated annually</p>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">PDF download is available to admin only.</p>
+          )}
         </section>
 
       </div>

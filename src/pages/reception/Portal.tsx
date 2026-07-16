@@ -704,12 +704,15 @@ export default function ReceptionPortal() {
           <h1 className="font-bold text-base text-white">Reception</h1>
           <p className="text-[10px] text-gray-400">{userName} · PIRcricketHub</p>
         </div>
-        <button
-          onClick={() => { clearSession(); setLoggedIn(false); }}
-          className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-400 transition-colors"
-        >
-          <LogOut className="h-4 w-4" /> Sign Out
-        </button>
+        <div className="flex items-center gap-2">
+          <Link href="/curriculum" className="text-xs text-yellow-400 border border-yellow-500/30 bg-yellow-500/10 px-3 py-1.5 rounded-lg font-bold hover:bg-yellow-500/20 transition-colors">Curriculum</Link>
+          <button
+            onClick={() => { clearSession(); setLoggedIn(false); }}
+            className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-400 transition-colors"
+          >
+            <LogOut className="h-4 w-4" /> Sign Out
+          </button>
+        </div>
       </div>
 
       {/* Content */}

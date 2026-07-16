@@ -10,7 +10,6 @@ const NAV = [
   { label: "Facilities", href: "#facilities" },
   { label: "Founder",    href: "#founder" },
   { label: "Why PIR?",   href: "/why-pir",    external: true },
-  { label: "Curriculum", href: "/curriculum", external: true },
   { label: "Book Ground",href: "/booking",    external: true },
   { label: "Contact",    href: "#contact" },
 ];

@@ -251,6 +251,7 @@ export default function Admin() {
               <RefreshCw className={`h-3 w-3 ${loading?"animate-spin":""}`}/> Refresh
             </button>
             <span className="text-xs text-muted-foreground hidden sm:block">Indrajit Kumar — Founder</span>
+            <Link href="/curriculum" className="text-xs text-yellow-400 border border-yellow-500/30 bg-yellow-500/10 rounded-lg px-3 py-1.5 font-bold hover:bg-yellow-500/20 transition-colors">Curriculum</Link>
             <button onClick={()=>{clearToken();setAuthed(false);}} className="text-xs text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-1.5 flex items-center gap-1 transition-colors"><X className="h-3 w-3"/> Sign out</button>
           </div>
         </div>

@@ -15,7 +15,9 @@ function LoginScreen({ onLogin }: { onLogin: (data: any) => void }) {
     try {
       const res = await fetch(`/api/student-portal?phone=${encodeURIComponent(phone.trim())}`);
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Not found"); }
-      onLogin(await res.json());
+      const data = await res.json();
+      sessionStorage.setItem("pir_student_session", JSON.stringify({ loggedIn: true }));
+      onLogin(data);
     } catch (err: any) { setError(err.message); }
     finally { setLoading(false); }
   };
@@ -268,8 +270,9 @@ export default function Student() {
             <p className="text-xs text-yellow-400">{batch?.name || "No batch"} · {student.ageGroup}</p>
           </div>
           <div className="flex items-center gap-2">
+            <Link href="/curriculum" className="text-xs text-yellow-400 border border-yellow-500/30 bg-yellow-500/10 px-3 py-1.5 rounded-lg font-bold hover:bg-yellow-500/20 transition-colors">Curriculum</Link>
             <Link href="/" className="text-xs text-gray-500 hover:text-yellow-400 border border-gray-700 px-3 py-1.5 rounded-lg transition-colors">← Home</Link>
-            <button onClick={() => setData(null)} className="text-xs text-gray-500 hover:text-gray-300 border border-gray-700 px-3 py-1.5 rounded-lg">Logout</button>
+            <button onClick={() => { sessionStorage.removeItem("pir_student_session"); setData(null); }} className="text-xs text-gray-500 hover:text-gray-300 border border-gray-700 px-3 py-1.5 rounded-lg">Logout</button>
           </div>
         </div>
       </div>
