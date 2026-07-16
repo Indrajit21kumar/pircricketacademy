@@ -1,7 +1,7 @@
 const items = [
   "🏏 PIRcricketHub launching August/September 2026 in Patna",
   "🌟 From the Soil of Bihar, to the Stadiums of India",
-  "🎓 PIR Talent Scholarship — 100% Free Training for Deserving Players · Inquire Now",
+  "🏆 Talent Hunt Scholarship — Up to 100% Fee Waiver for Exceptional Players · Inquire Now",
   "🎯 Early Admissions Open — Limited Founding Batch Seats",
   "🏆 Bihar's First Double Centurion in Ranji Trophy — Indrajit Kumar",
   "✅ U8, U12, U16, U19 & Elite Batches Now Forming",
