@@ -1,33 +1,36 @@
 export type PhaseColor = "emerald" | "blue" | "purple" | "yellow" | "orange" | "red";
 
-export interface MonthPlan {
-  month: string;           // e.g. "Sep 2026"
-  shortMonth: string;      // e.g. "Sep"
-  phase: string;           // e.g. "Phase 1 — Assessment"
-  phaseColor: PhaseColor;
-  focus: string;           // one-line session focus
-  objectives: string[];    // 4–6 key objectives
-  weeklyBreakdown: string; // what each week covers
-  globalStandard: string;  // ICC/BCCI/ECB alignment note
+export interface Session {
+  number: number;
+  day: string;           // "Monday"
+  label: string;         // "Batting & Fitness"
+  duration: string;      // "75 min"
+  warmUp: string[];      // 2–3 warm-up activities
+  mainWork: string[];    // 4–5 main drills with instructions
+  gamePlay: string;      // applied game / match activity
+  coachFocus: string;    // key teaching point for coach
 }
 
-export interface WeekDay {
-  day: string;
-  rest?: boolean;
-  focus: string;
-  activities: string[];
-  keySkill: string;
+export interface MonthPlan {
+  month: string;         // "Sep 2026"
+  shortMonth: string;    // "Sep"
+  phase: string;         // "Phase 1 — Assessment"
+  phaseColor: PhaseColor;
+  monthGoal: string;     // one-line goal for the month
+  sessions: Session[];   // 3 or 4 sessions that repeat each week this month
+  assessment: string;    // what to measure / check at month end
+  globalStandard: string;
 }
 
 export interface AgeGroupData {
   id: "foundation" | "junior" | "youth" | "senior";
   label: string;
-  tag: string;           // "U10" etc.
+  tag: string;
   ageRange: string;
-  accentColor: string;   // tailwind color name
+  accentColor: string;
   desc: string;
-  sessionsPerWeek: string;
+  trainingDays: string[];   // e.g. ["Monday","Wednesday","Friday"]
+  sessionsPerWeek: number;
   sessionLength: string;
   months: MonthPlan[];
-  weeklySchedule: WeekDay[];
 }

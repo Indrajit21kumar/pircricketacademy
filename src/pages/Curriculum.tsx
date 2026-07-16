@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { Download, ChevronDown, CheckCircle, Globe, Shield, BookOpen } from "lucide-react";
+import { Download, ChevronDown, CheckCircle, Globe, Shield, BookOpen, Dumbbell, Target, Users } from "lucide-react";
 import {
   ALL_GROUPS, STANDARDS, PHASE_COLORS, ACCENT_CLASSES, ACADEMIC_YEAR,
 } from "@/data/curriculum";
@@ -42,44 +42,116 @@ function NotLoggedIn() {
   );
 }
 
-// ─── Weekly Schedule Tab ───────────────────────────────────────────────────────
+// ─── Weekly Sessions Tab ───────────────────────────────────────────────────────
 function WeeklyTab({ group }: { group: AgeGroupData }) {
-  const todayName = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"][new Date().getDay()];
+  const [openMonth, setOpenMonth] = useState(0);
+  const month = group.months[openMonth];
+  const pc = PHASE_COLORS[month.phaseColor] ?? PHASE_COLORS.blue;
   const acc = ACCENT_CLASSES[group.accentColor] ?? ACCENT_CLASSES.blue;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      {group.weeklySchedule.map(day => {
-        const isToday = day.day === todayName;
-        return (
-          <div key={day.day} className={`rounded-2xl border p-5 transition-all ${
-            isToday ? `${acc.active} shadow-xl border-2` : day.rest ? "border-border/40 bg-background/40 opacity-60" : "border-border bg-card"
-          }`}>
-            {isToday && (
-              <span className="inline-block bg-secondary text-black text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider mb-2">Today</span>
-            )}
-            <p className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-0.5">{day.day}</p>
-            <p className="text-sm font-bold text-white mb-3">{day.focus}</p>
-            {!day.rest && (
-              <>
-                <ul className="space-y-1.5 mb-3">
-                  {day.activities.map(a => (
-                    <li key={a} className="flex items-start gap-2 text-xs text-muted-foreground">
-                      <CheckCircle className="h-3 w-3 mt-0.5 shrink-0 text-secondary/50" />
-                      {a}
-                    </li>
-                  ))}
-                </ul>
-                <div className="pt-2 border-t border-border/40">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Key Skill</p>
-                  <p className="text-xs font-semibold text-secondary mt-0.5">{day.keySkill}</p>
-                </div>
-              </>
-            )}
-            {day.rest && <p className="text-xs text-muted-foreground">Rest is part of training. Recovery = performance.</p>}
+    <div className="space-y-6">
+      {/* Month selector */}
+      <div className="flex flex-wrap gap-2">
+        {group.months.map((m, i) => (
+          <button key={m.shortMonth} onClick={() => setOpenMonth(i)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+              openMonth === i ? `${acc.active} border-2` : "border-border text-muted-foreground hover:text-foreground hover:border-border/60"
+            }`}>
+            {m.shortMonth}
+          </button>
+        ))}
+      </div>
+
+      {/* Phase badge + goal */}
+      <div className={`rounded-2xl border p-4 ${pc.bg} ${pc.border}`}>
+        <div className="flex items-start gap-3">
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs shrink-0 border ${pc.text} ${pc.bg} ${pc.border}`}>
+            {openMonth + 1}
           </div>
-        );
-      })}
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="font-bold text-white">{month.month}</span>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${pc.text} ${pc.bg} ${pc.border}`}>{month.phase}</span>
+            </div>
+            <p className="text-sm text-gray-300">{month.monthGoal}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Sessions grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {month.sessions.map(s => (
+          <div key={s.number} className="rounded-2xl border border-border bg-card p-5 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm border shrink-0 ${pc.text} ${pc.bg} ${pc.border}`}>
+                S{s.number}
+              </div>
+              <div>
+                <p className="font-bold text-white text-sm">{s.day}</p>
+                <p className="text-xs text-muted-foreground">{s.label} · {s.duration}</p>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1 mb-2">
+                <Dumbbell className="h-3 w-3" /> Warm-Up
+              </p>
+              <ul className="space-y-1">
+                {s.warmUp.map(w => (
+                  <li key={w} className="text-xs text-gray-400 flex items-start gap-1.5">
+                    <span className="w-1 h-1 rounded-full bg-muted-foreground mt-1.5 shrink-0" />
+                    {w}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1 mb-2">
+                <BookOpen className="h-3 w-3" /> Main Work
+              </p>
+              <ul className="space-y-1.5">
+                {s.mainWork.map(w => (
+                  <li key={w} className="flex items-start gap-2 text-xs text-gray-300">
+                    <CheckCircle className={`h-3.5 w-3.5 mt-0.5 shrink-0 ${pc.text}`} />
+                    {w}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="pt-3 border-t border-border/40 space-y-2">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1 mb-1">
+                  <Target className="h-3 w-3" /> Game / Match Play
+                </p>
+                <p className="text-xs text-secondary font-semibold">{s.gamePlay}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1 mb-1">
+                  <Users className="h-3 w-3" /> Coach Focus
+                </p>
+                <p className="text-xs text-gray-400 italic">{s.coachFocus}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Assessment + standard */}
+      <div className="grid md:grid-cols-2 gap-4">
+        <div className="rounded-xl border border-border bg-card/50 p-4">
+          <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground mb-2">Month-End Assessment</p>
+          <p className="text-sm text-gray-300">{month.assessment}</p>
+        </div>
+        <div className="rounded-xl border border-border bg-card/50 p-4">
+          <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1">
+            <Globe className="h-3 w-3" /> Global Standard
+          </p>
+          <p className="text-sm text-gray-300">{month.globalStandard}</p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -107,7 +179,7 @@ function MonthlyTab({ group }: { group: AgeGroupData }) {
                   <span className="font-bold text-white">{m.month}</span>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${pc.text} ${pc.bg} ${pc.border}`}>{m.phase}</span>
                 </div>
-                <p className="text-sm text-muted-foreground truncate">{m.focus}</p>
+                <p className="text-sm text-muted-foreground truncate">{m.monthGoal}</p>
               </div>
               <ChevronDown className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} />
             </button>
@@ -122,24 +194,45 @@ function MonthlyTab({ group }: { group: AgeGroupData }) {
                   transition={{ duration: 0.2 }}
                   className="overflow-hidden"
                 >
-                  <div className="px-5 pb-6 pt-2 grid md:grid-cols-2 gap-6 border-t border-border/30">
+                  <div className="px-5 pb-6 pt-2 border-t border-border/30 space-y-5">
+                    {/* Sessions summary */}
                     <div>
                       <h4 className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
-                        <BookOpen className="h-3.5 w-3.5" /> Key Objectives
+                        <BookOpen className="h-3.5 w-3.5" /> {m.sessions.length} Sessions This Month
                       </h4>
-                      <ul className="space-y-2">
-                        {m.objectives.map(obj => (
-                          <li key={obj} className="flex items-start gap-2 text-sm text-gray-300">
-                            <CheckCircle className={`h-4 w-4 mt-0.5 shrink-0 ${pc.text}`} />
-                            {obj}
-                          </li>
+                      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        {m.sessions.map(s => (
+                          <div key={s.number} className={`rounded-xl border p-3 ${pc.bg} ${pc.border}`}>
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className={`text-xs font-black ${pc.text}`}>Session {s.number}</span>
+                              <span className="text-xs text-muted-foreground">· {s.day} · {s.duration}</span>
+                            </div>
+                            <p className="text-sm font-semibold text-white mb-2">{s.label}</p>
+                            <ul className="space-y-1">
+                              {s.mainWork.slice(0, 3).map(w => (
+                                <li key={w} className="flex items-start gap-1.5 text-xs text-gray-400">
+                                  <CheckCircle className={`h-3 w-3 mt-0.5 shrink-0 ${pc.text}`} />
+                                  {w}
+                                </li>
+                              ))}
+                              {s.mainWork.length > 3 && (
+                                <li className="text-xs text-muted-foreground pl-4">+{s.mainWork.length - 3} more drills</li>
+                              )}
+                            </ul>
+                            <div className="mt-2 pt-2 border-t border-border/30">
+                              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Game Play</p>
+                              <p className="text-xs text-secondary font-semibold mt-0.5 line-clamp-2">{s.gamePlay}</p>
+                            </div>
+                          </div>
                         ))}
-                      </ul>
+                      </div>
                     </div>
-                    <div className="space-y-4">
+
+                    {/* Assessment + standard */}
+                    <div className="grid md:grid-cols-2 gap-4">
                       <div>
-                        <h4 className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-2">Weekly Breakdown</h4>
-                        <p className="text-sm text-gray-400 leading-relaxed">{m.weeklyBreakdown}</p>
+                        <h4 className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-2">Month-End Assessment</h4>
+                        <p className="text-sm text-gray-400 leading-relaxed">{m.assessment}</p>
                       </div>
                       <div>
                         <h4 className="text-xs font-black uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
@@ -231,6 +324,7 @@ export default function Curriculum() {
             <div>
               <h2 className="text-xl font-black text-white">{group.label} <span className="text-muted-foreground font-normal text-base">· {group.tag} · {group.ageRange}</span></h2>
               <p className="text-muted-foreground text-sm mt-0.5">{group.desc}</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">Training days: {group.trainingDays.join(" · ")}</p>
             </div>
             <div className="flex gap-6 text-center">
               <div>
@@ -254,7 +348,7 @@ export default function Curriculum() {
           {(["monthly", "weekly"] as const).map(v => (
             <button key={v} onClick={() => setView(v)}
               className={`px-5 py-2 rounded-lg text-sm font-bold capitalize transition-all ${view === v ? "bg-secondary text-black" : "text-muted-foreground hover:text-foreground"}`}>
-              {v} Schedule
+              {v === "monthly" ? "Monthly Overview" : "Session Detail"}
             </button>
           ))}
         </div>

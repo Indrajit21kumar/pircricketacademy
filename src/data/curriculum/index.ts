@@ -2,7 +2,7 @@ export { foundation } from "./foundation";
 export { junior }    from "./junior";
 export { youth }     from "./youth";
 export { senior }    from "./senior";
-export type { AgeGroupData, MonthPlan, WeekDay, PhaseColor } from "./types";
+export type { AgeGroupData, MonthPlan, Session, PhaseColor } from "./types";
 
 import { foundation } from "./foundation";
 import { junior }     from "./junior";
