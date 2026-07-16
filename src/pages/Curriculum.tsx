@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Link } from "wouter";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { Download, ChevronDown, CheckCircle, Globe, Shield, BookOpen, Dumbbell, Target, Users } from "lucide-react";
+import { ChevronDown, CheckCircle, Globe, Shield, BookOpen, Dumbbell, Target, Users } from "lucide-react";
 import {
   ALL_GROUPS, STANDARDS, PHASE_COLORS, ACCENT_CLASSES, ACADEMIC_YEAR,
 } from "@/data/curriculum";
@@ -291,12 +291,6 @@ export default function Curriculum() {
               Globally-benchmarked 12-month training plan · {ACADEMIC_YEAR}
             </p>
             <p className="text-gray-600 text-sm mb-6">ICC · BCCI · ECB · Cricket Australia frameworks delivered by certified coaches</p>
-            {role === "admin" && (
-              <a href="/pir-cricket-academy-curriculum.pdf" download
-                className="inline-flex items-center gap-2 bg-secondary text-black font-bold px-6 py-3 rounded-xl hover:bg-secondary/90 transition-all shadow-[0_0_20px_rgba(234,179,8,0.3)] text-sm uppercase tracking-wide">
-                <Download className="h-4 w-4" /> Download PDF
-              </a>
-            )}
           </motion.div>
         </div>
       </div>
@@ -383,18 +377,6 @@ export default function Curriculum() {
           </div>
         </section>
 
-        {/* Admin download CTA */}
-        {role === "admin" && (
-          <section className="text-center bg-gradient-to-br from-secondary/10 to-transparent border border-secondary/20 rounded-3xl p-10">
-            <Download className="h-10 w-10 text-secondary mx-auto mb-3 opacity-80" />
-            <h2 className="font-display text-2xl font-bold text-white mb-2">Download Full Curriculum PDF</h2>
-            <p className="text-muted-foreground text-sm max-w-md mx-auto mb-5">A4 format · 8 pages · Print-ready · Updated annually</p>
-            <a href="/pir-cricket-academy-curriculum.pdf" download
-              className="inline-flex items-center gap-2 bg-secondary text-black font-black uppercase tracking-wider px-8 py-4 rounded-xl hover:bg-secondary/90 transition-all shadow-[0_0_30px_rgba(234,179,8,0.3)] text-sm">
-              <Download className="h-5 w-5" /> Download PDF
-            </a>
-          </section>
-        )}
 
       </div>
       <Footer />
