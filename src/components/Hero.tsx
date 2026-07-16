@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
-import { Trophy, ChevronRight, Zap } from "lucide-react";
+import { Trophy, ChevronRight, Zap, BookOpen, Award, Calendar, Users } from "lucide-react";
 
 const LAUNCH = new Date("2026-08-20T00:00:00+05:30");
 
@@ -86,6 +86,55 @@ export default function Hero() {
               {f}
             </span>
           ))}
+        </motion.div>
+
+        {/* ★ FIRST IN BIHAR ★ Curriculum Highlight */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.32 }}
+          className="mb-6"
+        >
+          <div className="relative inline-block w-full max-w-2xl">
+            {/* Glow ring */}
+            <div className="absolute -inset-px rounded-2xl bg-gradient-to-r from-secondary via-yellow-300 to-secondary opacity-60 blur-sm" />
+            <div className="relative bg-black/80 backdrop-blur-md rounded-2xl border border-secondary/50 px-5 py-4 shadow-[0_0_40px_rgba(234,179,8,0.25)]">
+              {/* "First in Bihar" badge */}
+              <div className="flex items-center justify-center gap-2 mb-3">
+                <Award className="h-4 w-4 text-secondary fill-secondary/30" />
+                <span className="text-secondary font-extrabold text-xs uppercase tracking-[0.2em]">★ First in Bihar ★</span>
+                <Award className="h-4 w-4 text-secondary fill-secondary/30" />
+              </div>
+              <p className="text-white font-bold text-base md:text-lg mb-3 leading-tight">
+                Bihar's First Globally-Benchmarked<br />
+                <span className="text-secondary">Structured Cricket Curriculum</span>
+              </p>
+              {/* 4 stat chips */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+                {[
+                  { icon: Users,    val: "4", sub: "Age Groups", detail: "U8 · U12 · U17 · U19+" },
+                  { icon: Calendar, val: "12", sub: "Months", detail: "Sep 2026 – Aug 2027" },
+                  { icon: BookOpen, val: "3–4", sub: "Sessions/Week", detail: "Structured & documented" },
+                  { icon: Trophy,   val: "ICC+", sub: "Benchmarked", detail: "BCCI · ECB · Cricket Australia" },
+                ].map(({ icon: Icon, val, sub, detail }) => (
+                  <div key={sub} className="flex flex-col items-center bg-secondary/10 border border-secondary/30 rounded-xl px-2 py-2">
+                    <Icon className="h-4 w-4 text-secondary mb-1" />
+                    <span className="text-secondary font-extrabold text-xl leading-none">{val}</span>
+                    <span className="text-white/90 font-semibold text-[10px] mt-0.5 uppercase tracking-wide">{sub}</span>
+                    <span className="text-white/50 text-[9px] mt-0.5 text-center">{detail}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-white/60 text-[11px] mb-3">
+                Every session is documented — coaches follow the same plan so your child's training is consistent, transparent, and progressive.
+              </p>
+              <Link
+                href="/curriculum"
+                className="inline-flex items-center gap-1.5 bg-secondary text-black font-bold uppercase tracking-widest text-xs px-5 py-2.5 rounded-lg hover:bg-yellow-400 transition-all shadow-[0_0_20px_rgba(234,179,8,0.4)]"
+              >
+                <BookOpen className="h-3.5 w-3.5" />
+                View Full Curriculum <ChevronRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          </div>
         </motion.div>
 
         {/* Discount highlight strip */}
