@@ -76,7 +76,8 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
-  role: text("role").notNull(),   // admin | coach
+  plainPassword: text("plain_password"),          // stored by admin for visibility; null for admin account
+  role: text("role").notNull(),                   // admin | coach | student
   name: text("name").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

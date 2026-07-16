@@ -68,7 +68,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       case "templates":      return handleTemplates(req, res);
       case "campaigns":      return handleCampaigns(req, res);
       case "events":         return handleEvents(req, res);
-      case "users":                   return handleUsers(req, res);
+      case "users":                   return handleUsers(req, res, sub);
       case "discount-types":          return handleDiscountTypes(req, res);
       case "discount-applications":   return handleDiscountApplications(req, res);
       case "password-reset":          return handlePasswordReset(req, res, sub);

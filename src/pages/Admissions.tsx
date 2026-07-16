@@ -59,9 +59,42 @@ export default function Admissions() {
   const [submitting, setSubmitting] = useState(false);
   const [serverError, setServerError] = useState("");
   const [payMode, setPayMode] = useState<"online"|"cash">("online");
+  const [errors, setErrors] = useState<Record<string,string>>({});
 
-  const f = (k: string, v: any) => setForm(p => ({...p,[k]:v}));
+  const f = (k: string, v: any) => { setForm(p => ({...p,[k]:v})); setErrors(e => ({...e,[k]:""})); }
   const allConsents = form.consentMedical && form.consentPhoto && form.consentLiability && form.consentTerms && form.consentData;
+
+  const validPhone = (v: string) => /^\d{10}$/.test(v.replace(/\D/g,"").replace(/^91/,""));
+  const validDob = (v: string) => {
+    if (!v) return "Date of birth is required";
+    const d = new Date(v), now = new Date();
+    if (d >= now) return "Date of birth must be in the past";
+    const age = (now.getTime() - d.getTime()) / (365.25 * 86400000);
+    if (age < 4) return "Student must be at least 4 years old";
+    if (age > 35) return "Please check the date of birth entered";
+    return "";
+  };
+
+  const validateStep1 = () => {
+    const e: Record<string,string> = {};
+    if (!form.studentName.trim()) e.studentName = "Student name is required";
+    const dobErr = validDob(form.dob); if (dobErr) e.dob = dobErr;
+    if (!form.ageGroup) e.ageGroup = "Please select an age group";
+    if (!form.address.trim()) e.address = "Address is required";
+    setErrors(e); return Object.keys(e).length === 0;
+  };
+  const validateStep2 = () => {
+    const e: Record<string,string> = {};
+    if (!form.parentName.trim()) e.parentName = "Parent name is required";
+    if (!form.phone.trim()) e.phone = "Phone number is required";
+    else if (!validPhone(form.phone)) e.phone = "Enter a valid 10-digit mobile number";
+    if (!form.email.trim()) e.email = "Email address is required";
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = "Enter a valid email address";
+    if (!form.emergencyName.trim()) e.emergencyName = "Emergency contact name is required";
+    if (!form.emergencyPhone.trim()) e.emergencyPhone = "Emergency contact phone is required";
+    else if (!validPhone(form.emergencyPhone)) e.emergencyPhone = "Enter a valid 10-digit mobile number";
+    setErrors(e); return Object.keys(e).length === 0;
+  };
 
   // Package & discount calculations
   const eligPct = selectedDiscount && eligConfirmed && !skipDiscount ? selectedDiscount.percentage : 0;
@@ -294,27 +327,41 @@ export default function Admissions() {
             <h2 className="font-display text-2xl font-bold mb-4">Student Details</h2>
             <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
               <div className="grid sm:grid-cols-2 gap-4">
-                <div><label className="label">Student Full Name *</label><input required value={form.studentName} onChange={e=>f("studentName",e.target.value)} className="inp" placeholder="Enter student's full name"/></div>
-                <div><label className="label">Date of Birth *</label><input required type="date" value={form.dob} onChange={e=>f("dob",e.target.value)} className="inp"/></div>
+                <div>
+                  <label className="label">Student Full Name *</label>
+                  <input value={form.studentName} onChange={e=>f("studentName",e.target.value)} className={`inp ${errors.studentName?"inp-err":""}`} placeholder="Enter student's full name"/>
+                  {errors.studentName && <p className="text-red-400 text-xs mt-1">{errors.studentName}</p>}
+                </div>
+                <div>
+                  <label className="label">Date of Birth *</label>
+                  <input type="date" value={form.dob} onChange={e=>f("dob",e.target.value)} className={`inp ${errors.dob?"inp-err":""}`}/>
+                  {errors.dob && <p className="text-red-400 text-xs mt-1">{errors.dob}</p>}
+                </div>
               </div>
               <div className="grid sm:grid-cols-2 gap-4">
-                <div><label className="label">Age Group *</label>
-                  <select required value={form.ageGroup} onChange={e=>f("ageGroup",e.target.value)} className="inp">
+                <div>
+                  <label className="label">Age Group *</label>
+                  <select value={form.ageGroup} onChange={e=>f("ageGroup",e.target.value)} className={`inp ${errors.ageGroup?"inp-err":""}`}>
                     <option value="">Select age group</option>
                     {AGES.map(a=><option key={a} value={a}>{a}</option>)}
                   </select>
+                  {errors.ageGroup && <p className="text-red-400 text-xs mt-1">{errors.ageGroup}</p>}
                 </div>
                 <div><label className="label">School / College</label><input value={form.school} onChange={e=>f("school",e.target.value)} className="inp" placeholder="St. Xavier's School"/></div>
               </div>
-              <div><label className="label">Student Address *</label><input required value={form.address} onChange={e=>f("address",e.target.value)} className="inp" placeholder="House No, Street, Area, Patna, Bihar"/></div>
+              <div>
+                <label className="label">Student Address *</label>
+                <input value={form.address} onChange={e=>f("address",e.target.value)} className={`inp ${errors.address?"inp-err":""}`} placeholder="House No, Street, Area, Patna, Bihar"/>
+                {errors.address && <p className="text-red-400 text-xs mt-1">{errors.address}</p>}
+              </div>
               <div className="flex items-center gap-3 bg-secondary/5 border border-secondary/20 rounded-xl p-4 mt-2">
                 <input type="checkbox" id="trial" checked={form.isTrial} onChange={e=>f("isTrial",e.target.checked)} className="w-5 h-5 accent-yellow-500"/>
                 <label htmlFor="trial" className="text-sm font-semibold cursor-pointer">I want to book a <span className="text-secondary">Free Trial Session</span> first before full admission</label>
               </div>
               {form.isTrial && <div><label className="label">Preferred Trial Date</label><input type="date" value={form.trialDate} onChange={e=>f("trialDate",e.target.value)} className="inp"/></div>}
             </div>
-            <button type="button" onClick={()=>setStep(2)} disabled={!form.studentName||!form.dob||!form.ageGroup||!form.address}
-              className="w-full bg-secondary text-secondary-foreground font-bold uppercase py-4 rounded-xl hover:bg-secondary/90 transition-all disabled:opacity-40 flex items-center justify-center gap-2">
+            <button type="button" onClick={()=>{ if(validateStep1()) setStep(2); }}
+              className="w-full bg-secondary text-secondary-foreground font-bold uppercase py-4 rounded-xl hover:bg-secondary/90 transition-all flex items-center justify-center gap-2">
               Continue <ArrowRight className="h-5 w-5"/>
             </button>
           </motion.div>
@@ -327,11 +374,23 @@ export default function Admissions() {
             <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
               <p className="text-xs font-bold uppercase tracking-wider text-secondary">Parent / Guardian</p>
               <div className="grid sm:grid-cols-2 gap-4">
-                <div><label className="label">Parent / Guardian Name *</label><input required value={form.parentName} onChange={e=>f("parentName",e.target.value)} className="inp" placeholder="Enter parent/guardian name"/></div>
-                <div><label className="label">Phone Number *</label><input required value={form.phone} onChange={e=>f("phone",e.target.value)} className="inp" placeholder="Enter 10-digit mobile number"/></div>
+                <div>
+                  <label className="label">Parent / Guardian Name *</label>
+                  <input value={form.parentName} onChange={e=>f("parentName",e.target.value)} className={`inp ${errors.parentName?"inp-err":""}`} placeholder="Enter parent/guardian name"/>
+                  {errors.parentName && <p className="text-red-400 text-xs mt-1">{errors.parentName}</p>}
+                </div>
+                <div>
+                  <label className="label">Phone Number *</label>
+                  <input value={form.phone} onChange={e=>f("phone",e.target.value)} className={`inp ${errors.phone?"inp-err":""}`} placeholder="10-digit mobile number"/>
+                  {errors.phone && <p className="text-red-400 text-xs mt-1">{errors.phone}</p>}
+                </div>
               </div>
               <div className="grid sm:grid-cols-2 gap-4">
-                <div><label className="label">Email Address *</label><input required type="email" value={form.email} onChange={e=>f("email",e.target.value)} className="inp" placeholder="Enter email address"/></div>
+                <div>
+                  <label className="label">Email Address *</label>
+                  <input type="email" value={form.email} onChange={e=>f("email",e.target.value)} className={`inp ${errors.email?"inp-err":""}`} placeholder="Enter email address"/>
+                  {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email}</p>}
+                </div>
               </div>
             </div>
             <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
@@ -350,14 +409,22 @@ export default function Admissions() {
               </div>
               <div><label className="label">Other Medical Conditions</label><textarea value={form.medicalNotes} onChange={e=>f("medicalNotes",e.target.value)} rows={2} className="inp resize-none" placeholder="None / describe any conditions..."/></div>
               <div className="grid sm:grid-cols-2 gap-4">
-                <div><label className="label">Emergency Contact Name *</label><input required value={form.emergencyName} onChange={e=>f("emergencyName",e.target.value)} className="inp" placeholder="Emergency contact name"/></div>
-                <div><label className="label">Emergency Contact Phone *</label><input required value={form.emergencyPhone} onChange={e=>f("emergencyPhone",e.target.value)} className="inp" placeholder="+91 99999 99999"/></div>
+                <div>
+                  <label className="label">Emergency Contact Name *</label>
+                  <input value={form.emergencyName} onChange={e=>f("emergencyName",e.target.value)} className={`inp ${errors.emergencyName?"inp-err":""}`} placeholder="Emergency contact name"/>
+                  {errors.emergencyName && <p className="text-red-400 text-xs mt-1">{errors.emergencyName}</p>}
+                </div>
+                <div>
+                  <label className="label">Emergency Contact Phone *</label>
+                  <input value={form.emergencyPhone} onChange={e=>f("emergencyPhone",e.target.value)} className={`inp ${errors.emergencyPhone?"inp-err":""}`} placeholder="10-digit mobile number"/>
+                  {errors.emergencyPhone && <p className="text-red-400 text-xs mt-1">{errors.emergencyPhone}</p>}
+                </div>
               </div>
             </div>
             <div className="flex gap-3">
-              <button type="button" onClick={()=>setStep(1)} className="px-6 py-4 border border-border rounded-xl text-muted-foreground hover:text-foreground font-bold uppercase text-sm">Back</button>
-              <button type="button" onClick={()=>setStep(3)} disabled={!form.parentName||!form.phone||!form.email||!form.emergencyName||!form.emergencyPhone}
-                className="flex-1 bg-secondary text-secondary-foreground font-bold uppercase py-4 rounded-xl hover:bg-secondary/90 transition-all disabled:opacity-40 flex items-center justify-center gap-2">
+              <button type="button" onClick={()=>{ setErrors({}); setStep(1); }} className="px-6 py-4 border border-border rounded-xl text-muted-foreground hover:text-foreground font-bold uppercase text-sm">Back</button>
+              <button type="button" onClick={()=>{ if(validateStep2()) setStep(3); }}
+                className="flex-1 bg-secondary text-secondary-foreground font-bold uppercase py-4 rounded-xl hover:bg-secondary/90 transition-all flex items-center justify-center gap-2">
                 Continue <ArrowRight className="h-5 w-5"/>
               </button>
             </div>
@@ -396,10 +463,11 @@ export default function Admissions() {
         {/* ── Step 4: Discount (Optional) ── */}
         {step===4 && (
           <motion.div initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} className="space-y-4">
-            <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-center gap-3 mb-4 flex-wrap">
               <Tag className="h-6 w-6 text-secondary"/>
               <h2 className="font-display text-2xl font-bold">Discount Eligibility</h2>
               <span className="text-xs bg-muted text-muted-foreground px-2 py-1 rounded-full font-medium">Optional</span>
+              <span className="text-xs bg-secondary/10 border border-secondary/30 text-secondary px-2 py-1 rounded-full font-bold">Max 2 discounts (1 eligibility + 1 package)</span>
             </div>
 
             {/* Pre-opening auto-applied banner */}
@@ -425,13 +493,14 @@ export default function Admissions() {
               <>
                 <p className="text-muted-foreground text-sm">
                   {isPreOpeningEligible
-                    ? "Your 25% pre-opening discount is already applied. If you are eligible for an additional discount, select it below."
-                    : "If you are eligible for a discount, select it below and upload the required proof document. Discount applies only on tuition fee and is activated after admin verification."}
+                    ? "Your 25% pre-opening discount is locked in. You can stack one package discount on top — that's all. Max 2 discounts per student."
+                    : "Select one eligibility discount if applicable, then combine it with a package discount for maximum savings. Max 2 discounts per student (1 eligibility + 1 package)."}
                 </p>
 
-                {/* Discount cards — hide pre-opening card since it's auto-applied */}
+                {/* Discount cards — hide all when pre-opening is auto-applied (already at max 1 eligibility) */}
+                {!isPreOpeningEligible && (
                 <div className="space-y-3">
-                  {discountTypes.filter(d => !(isPreOpeningEligible && d.id === 4)).map(d => {
+                  {discountTypes.filter(d => d.id !== 4).map(d => {
                     const selected = selectedDiscount?.id === d.id;
                     const noDocNeeded = d.requiredDocument.toLowerCase().startsWith("no document");
                     return (
@@ -511,6 +580,7 @@ export default function Admissions() {
                     );
                   })}
                 </div>
+                )}
 
                 {/* Skip option */}
                 <div
@@ -579,7 +649,7 @@ export default function Admissions() {
             {/* Package Selection */}
             <div className="bg-card border border-border rounded-2xl p-5 mb-4">
               <p className="text-xs font-bold uppercase tracking-wider text-secondary mb-3">Fee Package (Optional)</p>
-              <p className="text-muted-foreground text-xs mb-4">Pay monthly fees upfront to unlock additional savings. Registration fee (₹5,000) is always required.</p>
+              <p className="text-muted-foreground text-xs mb-4">Pay monthly fees upfront to unlock additional savings. <strong className="text-foreground">All discounts apply only to the monthly tuition fee.</strong> Registration fee (₹5,000) and Kit fee (₹2,000) are fixed and not discountable.</p>
 
               {/* Registration only option */}
               <div onClick={() => setSelectedPackage(null)} className={`border rounded-xl p-3 cursor-pointer mb-2 transition-all ${selectedPackage === null ? "border-secondary bg-secondary/5" : "border-border hover:border-secondary/30"}`}>

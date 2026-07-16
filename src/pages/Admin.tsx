@@ -845,6 +845,11 @@ function CoachesTab({ apiFetch }: { apiFetch: (path: string, opts?: RequestInit)
   const [deleting, setDeleting] = useState<number | null>(null);
   const [form, setForm] = useState({ name: "", username: "", password: "", role: "coach" });
   const [error, setError] = useState("");
+  const [showPwd, setShowPwd] = useState<Record<number, boolean>>({});
+  const [resetTarget, setResetTarget] = useState<any | null>(null);
+  const [resetPwd, setResetPwd] = useState("");
+  const [resetting, setResetting] = useState(false);
+  const [resetError, setResetError] = useState("");
 
   const load = () => apiFetch("/users").then(r => r.json()).then(d => setCoaches(Array.isArray(d) ? d : []));
   useEffect(() => { load(); }, []);
@@ -862,30 +867,73 @@ function CoachesTab({ apiFetch }: { apiFetch: (path: string, opts?: RequestInit)
   };
 
   const remove = async (id: number) => {
-    if (!confirm("Remove this coach account?")) return;
+    if (!confirm("Remove this account?")) return;
     setDeleting(id);
-    await apiFetch(`/users?id=${id}`, { method: "DELETE" });
+    await apiFetch(`/users/${id}`, { method: "DELETE" });
     setDeleting(null);
     load();
   };
 
+  const doReset = async (e: React.FormEvent) => {
+    e.preventDefault(); setResetError(""); setResetting(true);
+    try {
+      const res = await apiFetch(`/users/${resetTarget.id}/reset-password`, { method: "PATCH", body: JSON.stringify({ password: resetPwd }) });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error); }
+      setResetTarget(null); setResetPwd("");
+      load();
+    } catch (err: any) { setResetError(err.message); }
+    finally { setResetting(false); }
+  };
+
+  const roleColor = (role: string) =>
+    role === "admin" ? "bg-secondary/10 text-secondary" :
+    role === "student" ? "bg-purple-400/10 text-purple-400" :
+    "bg-blue-400/10 text-blue-400";
+
   return (
     <motion.div initial={{opacity:0}} animate={{opacity:1}}>
+      {/* Reset Password Modal */}
+      {resetTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-card border border-secondary/30 rounded-2xl p-6 w-full max-w-sm">
+            <h3 className="font-bold text-lg mb-1">Reset Password</h3>
+            <p className="text-muted-foreground text-sm mb-4">Set a new password for <strong className="text-foreground">{resetTarget.name}</strong> ({resetTarget.username})</p>
+            <form onSubmit={doReset} className="space-y-4">
+              <div>
+                <label className="label">New Password *</label>
+                <input required autoFocus className="inp" value={resetPwd} onChange={e => setResetPwd(e.target.value)} placeholder="Min 6 characters" minLength={6} />
+              </div>
+              {resetError && <p className="text-red-400 text-sm bg-red-400/10 border border-red-400/20 rounded-lg p-3">{resetError}</p>}
+              <div className="flex gap-3">
+                <button type="submit" disabled={resetting || resetPwd.length < 6} className="bg-secondary text-secondary-foreground font-bold px-4 py-2 rounded-xl text-sm disabled:opacity-50 flex-1">
+                  {resetting ? "Saving..." : "Save Password"}
+                </button>
+                <button type="button" onClick={() => { setResetTarget(null); setResetPwd(""); setResetError(""); }} className="border border-border text-muted-foreground px-4 py-2 rounded-xl text-sm">Cancel</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between mb-6">
-        <div><h2 className="font-display text-3xl font-bold">Coach Accounts</h2><p className="text-muted-foreground">Manage coach and admin login credentials</p></div>
-        <button onClick={() => setShowForm(v => !v)} className="bg-secondary text-secondary-foreground font-bold px-4 py-2.5 rounded-xl text-sm hover:bg-secondary/90">+ Add Coach</button>
+        <div>
+          <h2 className="font-display text-3xl font-bold">Coach & Student Accounts</h2>
+          <p className="text-muted-foreground">Manage login credentials — passwords visible to admin only</p>
+        </div>
+        <button onClick={() => setShowForm(v => !v)} className="bg-secondary text-secondary-foreground font-bold px-4 py-2.5 rounded-xl text-sm hover:bg-secondary/90">+ Add Account</button>
       </div>
 
       {showForm && (
         <div className="bg-card border border-secondary/30 rounded-2xl p-6 mb-6">
-          <h3 className="font-bold mb-4 text-secondary">New Coach Account</h3>
+          <h3 className="font-bold mb-4 text-secondary">New Account</h3>
           <form onSubmit={submit} className="grid sm:grid-cols-2 gap-4">
             <div><label className="label">Full Name *</label><input required className="inp" value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Ravi Kumar" /></div>
             <div><label className="label">Username *</label><input required className="inp" value={form.username} onChange={e => setForm({...form, username: e.target.value})} placeholder="coach.ravi" /></div>
-            <div><label className="label">Password *</label><input required type="password" className="inp" value={form.password} onChange={e => setForm({...form, password: e.target.value})} placeholder="Min 6 characters" /></div>
+            <div><label className="label">Password *</label><input required className="inp" value={form.password} onChange={e => setForm({...form, password: e.target.value})} placeholder="Min 6 characters" minLength={6} /></div>
             <div><label className="label">Role</label>
               <select className="inp" value={form.role} onChange={e => setForm({...form, role: e.target.value})}>
                 <option value="coach">Coach</option>
+                <option value="student">Student</option>
                 <option value="admin">Admin</option>
               </select>
             </div>
@@ -898,11 +946,12 @@ function CoachesTab({ apiFetch }: { apiFetch: (path: string, opts?: RequestInit)
         </div>
       )}
 
-      <div className="bg-card border border-border rounded-2xl overflow-hidden">
+      <div className="bg-card border border-border rounded-2xl overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="border-b border-border text-muted-foreground text-xs uppercase tracking-wider">
             <th className="text-left p-4">Name</th>
             <th className="text-left p-4">Username</th>
+            <th className="text-left p-4">Password</th>
             <th className="text-left p-4">Role</th>
             <th className="text-left p-4">Created</th>
             <th className="p-4"></th>
@@ -912,18 +961,41 @@ function CoachesTab({ apiFetch }: { apiFetch: (path: string, opts?: RequestInit)
               <tr key={c.id} className={`border-b border-border/50 hover:bg-muted/20 ${i === coaches.length-1 ? "border-0" : ""}`}>
                 <td className="p-4 font-semibold">{c.name}</td>
                 <td className="p-4 font-mono text-xs text-muted-foreground">{c.username}</td>
-                <td className="p-4"><span className={`text-xs font-bold px-2 py-1 rounded-full ${c.role==="admin"?"bg-secondary/10 text-secondary":"bg-blue-400/10 text-blue-400"}`}>{c.role}</span></td>
+                <td className="p-4">
+                  {c.username === "admin" ? (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  ) : c.plainPassword ? (
+                    <div className="flex items-center gap-2">
+                      <span className={`font-mono text-xs ${showPwd[c.id] ? "text-foreground" : "text-muted-foreground tracking-widest"}`}>
+                        {showPwd[c.id] ? c.plainPassword : "••••••"}
+                      </span>
+                      <button onClick={() => setShowPwd(p => ({...p, [c.id]: !p[c.id]}))} className="text-xs text-secondary hover:text-secondary/80">
+                        {showPwd[c.id] ? "Hide" : "Show"}
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground italic">Set via reset</span>
+                  )}
+                </td>
+                <td className="p-4"><span className={`text-xs font-bold px-2 py-1 rounded-full ${roleColor(c.role)}`}>{c.role}</span></td>
                 <td className="p-4 text-muted-foreground text-xs">{new Date(c.createdAt).toLocaleDateString("en-IN")}</td>
                 <td className="p-4 text-right">
-                  {c.username !== "admin" && (
-                    <button onClick={() => remove(c.id)} disabled={deleting === c.id} className="text-xs text-red-400 hover:text-red-300 disabled:opacity-50">
-                      {deleting === c.id ? "..." : "Remove"}
-                    </button>
-                  )}
+                  <div className="flex items-center justify-end gap-3">
+                    {c.username !== "admin" && (
+                      <>
+                        <button onClick={() => { setResetTarget(c); setResetPwd(""); setResetError(""); }} className="text-xs text-secondary hover:text-secondary/80 font-semibold">
+                          Reset Password
+                        </button>
+                        <button onClick={() => remove(c.id)} disabled={deleting === c.id} className="text-xs text-red-400 hover:text-red-300 disabled:opacity-50">
+                          {deleting === c.id ? "..." : "Remove"}
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
-            {coaches.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">No accounts yet. Add a coach above.</td></tr>}
+            {coaches.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-muted-foreground">No accounts yet. Add one above.</td></tr>}
           </tbody>
         </table>
       </div>

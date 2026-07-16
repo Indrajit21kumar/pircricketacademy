@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link } from "wouter";
-import { Trophy, ChevronRight } from "lucide-react";
+import { Trophy, ChevronRight, Zap } from "lucide-react";
 
 const LAUNCH = new Date("2026-08-20T00:00:00+05:30");
 
@@ -81,12 +81,39 @@ export default function Hero() {
 
         {/* Feature pills */}
         <motion.div initial={{opacity:0,y:10}} animate={{opacity:1,y:0}} transition={{duration:0.5,delay:0.3}} className="flex flex-wrap justify-center gap-2 mb-5">
-          {["Expert BCCI Coaches", "HD Video Analysis", "Strength & Fitness", "Indoor Nets"].map(f => (
+          {["Expert BCCI Coaches", "HD Video Analysis", "Strength & Fitness", "Bowling Machine", "Night Practice Available"].map(f => (
             <span key={f} className="bg-secondary/20 border border-secondary/40 text-secondary text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full backdrop-blur-sm">
               {f}
             </span>
           ))}
         </motion.div>
+
+        {/* Discount highlight strip */}
+        {!done && (
+          <motion.div initial={{opacity:0,y:12}} animate={{opacity:1,y:0}} transition={{duration:0.5,delay:0.32}} className="mb-6">
+            <div className="inline-block bg-black/60 backdrop-blur-md border border-secondary/50 rounded-2xl px-5 py-3 shadow-[0_0_30px_rgba(234,179,8,0.2)]">
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <Zap className="h-4 w-4 text-secondary fill-secondary" />
+                <span className="text-secondary font-bold text-xs uppercase tracking-widest">Founding Batch Exclusive Savings</span>
+                <Zap className="h-4 w-4 text-secondary fill-secondary" />
+              </div>
+              <div className="flex items-center justify-center gap-3 flex-wrap">
+                {[
+                  { label: "3-Month Pack", pct: "35%", sub: "25% + 10%" },
+                  { label: "6-Month Pack", pct: "40%", sub: "25% + 15%" },
+                  { label: "12-Month Pack", pct: "45%", sub: "25% + 20%" },
+                ].map(({ label, pct, sub }) => (
+                  <div key={label} className="flex flex-col items-center bg-secondary/10 border border-secondary/30 rounded-xl px-4 py-2">
+                    <span className="text-secondary font-bold text-xl leading-none">{pct} OFF</span>
+                    <span className="text-white/60 text-[10px] mt-0.5">{sub} on tuition</span>
+                    <span className="text-white/50 text-[10px]">{label}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-white/50 text-[10px] text-center mt-2">Discounts apply on monthly tuition only · Reg ₹5,000 &amp; Kit ₹2,000 are fixed · Max 2 discounts per student</p>
+            </div>
+          </motion.div>
+        )}
 
         {/* Sub-text */}
         <motion.p

@@ -6,7 +6,7 @@ import {
   notifications, sessionNotes, playerRatings, events,
   discountTypes, discountApplications, passwordResets,
 } from "../server/db/schema.js";
-import { eq, inArray, lt } from "drizzle-orm";
+import { eq, inArray, lt, and } from "drizzle-orm";
 import { z } from "zod";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
@@ -637,12 +637,20 @@ async function handleAttendance(req: VercelRequest, res: VercelResponse) {
       studentId = s.id;
     }
     if (!studentId) return res.status(400).json({ error: "studentId or qrToken required" });
+    // Prevent duplicate attendance for the same student on the same day
+    const [existing] = await db.select().from(attendance)
+      .where(and(eq(attendance.studentId, studentId), eq(attendance.sessionDate, data.sessionDate)));
+    if (existing) {
+      const [s] = await db.select().from(students).where(eq(students.id, studentId));
+      return res.status(409).json({ error: "Already marked for today", student: s ? { name: s.name, status: existing.status } : undefined });
+    }
     const [row] = await db.insert(attendance).values({
       studentId, batchId: data.batchId ?? null,
       sessionDate: data.sessionDate, status: data.status,
       markedBy: data.markedBy, notes: data.notes ?? null,
     }).returning();
-    return res.status(201).json(row);
+    const [s] = await db.select().from(students).where(eq(students.id, studentId));
+    return res.status(201).json({ ...row, student: s ? { name: s.name } : undefined });
   }
   return res.status(405).json({ error: "Method not allowed" });
 }
@@ -982,34 +990,49 @@ async function handleEvents(req: VercelRequest, res: VercelResponse) {
   return res.status(405).json({ error: "Method not allowed" });
 }
 
-// ── Users (coach account management) ──────────────────────────────────────────
-async function handleUsers(req: VercelRequest, res: VercelResponse) {
+// ── Users (coach / student account management) ────────────────────────────────
+async function handleUsers(req: VercelRequest, res: VercelResponse, sub: string[]) {
   try { requireAdmin(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
 
+  const id = sub[0] ? parseInt(sub[0]) : null;
+  const action = sub[1]; // e.g. "reset-password"
+
+  // PATCH /api/users/:id/reset-password
+  if (req.method === "PATCH" && id && action === "reset-password") {
+    const { password } = z.object({ password: z.string().min(6) }).parse(req.body);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    if (!user) return res.status(404).json({ error: "User not found" });
+    if (user.username === "admin") return res.status(403).json({ error: "Cannot reset super admin password here" });
+    const passwordHash = await bcrypt.hash(password, 10);
+    const [row] = await db.update(users).set({ passwordHash, plainPassword: password })
+      .where(eq(users.id, id))
+      .returning({ id: users.id, username: users.username, role: users.role, name: users.name, plainPassword: users.plainPassword, createdAt: users.createdAt });
+    return res.json(row);
+  }
+
   if (req.method === "GET") {
-    const all = await db.select({ id: users.id, username: users.username, role: users.role, name: users.name, createdAt: users.createdAt })
+    const all = await db.select({ id: users.id, username: users.username, role: users.role, name: users.name, plainPassword: users.plainPassword, createdAt: users.createdAt })
       .from(users).orderBy(users.createdAt);
     return res.json(all);
   }
   if (req.method === "POST") {
     const data = z.object({
       username: z.string().min(3), password: z.string().min(6),
-      name: z.string().min(1), role: z.enum(["coach", "admin"]),
+      name: z.string().min(1), role: z.enum(["coach", "admin", "student"]),
     }).parse(req.body);
     const existing = await db.select().from(users).where(eq(users.username, data.username));
     if (existing.length > 0) return res.status(409).json({ error: "Username already exists" });
     const passwordHash = await bcrypt.hash(data.password, 10);
-    const [row] = await db.insert(users).values({ username: data.username, passwordHash, name: data.name, role: data.role }).returning({
-      id: users.id, username: users.username, role: users.role, name: users.name, createdAt: users.createdAt,
+    const [row] = await db.insert(users).values({ username: data.username, passwordHash, plainPassword: data.password, name: data.name, role: data.role }).returning({
+      id: users.id, username: users.username, role: users.role, name: users.name, plainPassword: users.plainPassword, createdAt: users.createdAt,
     });
     return res.status(201).json(row);
   }
   if (req.method === "DELETE") {
-    const { id } = req.query as Record<string, string>;
     if (!id) return res.status(400).json({ error: "id required" });
-    const [user] = await db.select().from(users).where(eq(users.id, parseInt(id)));
+    const [user] = await db.select().from(users).where(eq(users.id, id));
     if (user?.username === "admin") return res.status(403).json({ error: "Cannot delete super admin" });
-    await db.delete(users).where(eq(users.id, parseInt(id)));
+    await db.delete(users).where(eq(users.id, id));
     return res.json({ ok: true });
   }
   return res.status(405).json({ error: "Method not allowed" });
@@ -1072,11 +1095,11 @@ export async function handleDiscountApplications(req: VercelRequest, res: Vercel
       documentUrl: z.string().optional(),
       documentName: z.string().optional(),
     }).parse(req.body);
-    // Only one discount allowed per student at any time (pending or approved)
+    // Max 2 discounts per student: 1 eligibility + 1 package. Only one eligibility discount application allowed.
     const existing = await db.select().from(discountApplications)
       .where(eq(discountApplications.studentId, data.studentId));
     const active = existing.find(a => a.status === "pending" || a.status === "approved");
-    if (active) return res.status(409).json({ error: "Only one discount is applicable at a time. This student already has an active discount application." });
+    if (active) return res.status(409).json({ error: "Maximum 2 discounts allowed per student (1 eligibility + 1 package). This student already has an active eligibility discount applied." });
     // Pre-opening discount (id=4) is auto-approved — no document review needed
     const PRE_OPENING_ID = 4;
     const PRE_OPENING_DEADLINE = new Date("2026-08-20");

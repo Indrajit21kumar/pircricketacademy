@@ -458,17 +458,6 @@ export default function CoachPortal() {
           {tab === "ratings" && <PlayerRatingsTab coachName={coachName} batches={batches} />}
         </div>
 
-        {/* Quick links */}
-        <div className="grid grid-cols-2 gap-3 mt-4">
-          <button onClick={() => navigate("/admin/students")} className="bg-[#0a0f1e] border border-gray-800 rounded-xl p-4 flex items-center justify-between hover:border-yellow-500/30 transition-colors">
-            <div className="flex items-center gap-3"><Users className="h-5 w-5 text-yellow-400" /><span className="text-sm font-bold">Students</span></div>
-            <ChevronRight className="h-4 w-4 text-gray-600" />
-          </button>
-          <button onClick={() => navigate("/admin/attendance")} className="bg-[#0a0f1e] border border-gray-800 rounded-xl p-4 flex items-center justify-between hover:border-yellow-500/30 transition-colors">
-            <div className="flex items-center gap-3"><CheckCircle className="h-5 w-5 text-green-400" /><span className="text-sm font-bold">Attendance</span></div>
-            <ChevronRight className="h-4 w-4 text-gray-600" />
-          </button>
-        </div>
       </div>
     </div>
   );

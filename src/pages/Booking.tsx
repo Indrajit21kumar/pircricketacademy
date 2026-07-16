@@ -54,6 +54,25 @@ export default function Booking() {
   const [payMode, setPayMode] = useState<"online"|"cash">("online");
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
   const [slotPopup, setSlotPopup] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string,string>>({});
+
+  const setSel2 = (k: string, v: any) => { setSel(p=>({...p,[k]:v})); setFieldErrors(e=>({...e,[k]:""})); };
+  const validPhone = (v: string) => /^\d{10}$/.test(v.replace(/\D/g,"").replace(/^91/,""));
+
+  const validateDetails = () => {
+    const e: Record<string,string> = {};
+    if (!sel.name.trim()) e.name = "Full name is required";
+    if (!sel.phone.trim()) e.phone = "Phone number is required";
+    else if (!validPhone(sel.phone)) e.phone = "Enter a valid 10-digit mobile number";
+    if (payMode === "online") {
+      if (!sel.email.trim()) e.email = "Email is required for online payment";
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sel.email)) e.email = "Enter a valid email address";
+    } else if (sel.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(sel.email)) {
+      e.email = "Enter a valid email address";
+    }
+    setFieldErrors(e);
+    return Object.keys(e).length === 0;
+  };
 
   useEffect(() => { loadRazorpayScript(); }, []);
 
@@ -72,7 +91,7 @@ export default function Booking() {
   const today = new Date().toISOString().split("T")[0];
 
   const payCash = async () => {
-    if (!facility) return;
+    if (!facility || !validateDetails()) return;
     setSubmitting(true);
     setServerError("");
     try {
@@ -102,6 +121,7 @@ export default function Booking() {
   };
 
   const pay = async () => {
+    if (!validateDetails()) return;
     if (payMode === "cash") return payCash();
     if (!facility) return;
     setSubmitting(true);
@@ -306,13 +326,22 @@ export default function Booking() {
             <h2 className="font-display text-2xl font-bold mb-6">Your Details & Payment</h2>
             <div className="bg-card border border-border rounded-2xl p-6 space-y-4 mb-5">
               <div className="grid sm:grid-cols-2 gap-4">
-                <div><label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">Full Name *</label>
-                  <input required value={sel.name} onChange={e=>setSel({...sel,name:e.target.value})} className="w-full bg-background border border-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-secondary transition-colors" placeholder="Enter your full name"/></div>
-                <div><label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">Phone Number *</label>
-                  <input required value={sel.phone} onChange={e=>setSel({...sel,phone:e.target.value})} className="w-full bg-background border border-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-secondary transition-colors" placeholder="Enter 10-digit mobile number"/></div>
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">Full Name *</label>
+                  <input value={sel.name} onChange={e=>setSel2("name",e.target.value)} className={`w-full bg-background border rounded-lg px-4 py-3 text-sm focus:outline-none transition-colors ${fieldErrors.name?"border-red-400 focus:border-red-400":"border-border focus:border-secondary"}`} placeholder="Enter your full name"/>
+                  {fieldErrors.name && <p className="text-red-400 text-xs mt-1">{fieldErrors.name}</p>}
+                </div>
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">Phone Number *</label>
+                  <input value={sel.phone} onChange={e=>setSel2("phone",e.target.value)} className={`w-full bg-background border rounded-lg px-4 py-3 text-sm focus:outline-none transition-colors ${fieldErrors.phone?"border-red-400 focus:border-red-400":"border-border focus:border-secondary"}`} placeholder="10-digit mobile number"/>
+                  {fieldErrors.phone && <p className="text-red-400 text-xs mt-1">{fieldErrors.phone}</p>}
+                </div>
               </div>
-              <div><label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">Email Address *</label>
-                <input required type="email" value={sel.email} onChange={e=>setSel({...sel,email:e.target.value})} className="w-full bg-background border border-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-secondary transition-colors" placeholder="Enter your email address"/></div>
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2">Email Address {payMode==="online"?"*":"(optional)"}</label>
+                <input type="email" value={sel.email} onChange={e=>setSel2("email",e.target.value)} className={`w-full bg-background border rounded-lg px-4 py-3 text-sm focus:outline-none transition-colors ${fieldErrors.email?"border-red-400 focus:border-red-400":"border-border focus:border-secondary"}`} placeholder="Enter your email address"/>
+                {fieldErrors.email && <p className="text-red-400 text-xs mt-1">{fieldErrors.email}</p>}
+              </div>
             </div>
             <div className="bg-secondary/5 border border-secondary/20 rounded-2xl p-5 mb-5">
               <p className="font-bold uppercase tracking-wider text-sm mb-3">Booking Summary</p>
@@ -336,7 +365,7 @@ export default function Booking() {
               </button>
             </div>
             {serverError && <p className="text-red-400 text-sm text-center bg-red-400/10 border border-red-400/20 rounded-lg p-3 mb-4">{serverError}</p>}
-            <button disabled={!sel.name||!sel.phone||(payMode==="online"&&!sel.email)||submitting} onClick={pay}
+            <button disabled={submitting} onClick={pay}
               className={`w-full font-bold uppercase py-4 rounded-xl transition-all text-base disabled:opacity-40 flex items-center justify-center gap-3 ${payMode==="cash" ? "bg-green-600 hover:bg-green-700 text-white shadow-[0_0_20px_rgba(22,163,74,0.25)]" : "bg-secondary text-secondary-foreground hover:bg-secondary/90 shadow-[0_0_20px_rgba(234,179,8,0.25)]"}`}>
               <ShieldCheck className="h-5 w-5"/>
               {submitting ? "Processing..." : payMode === "cash" ? `Book Now · Pay ₹${total.toLocaleString()} Cash at Academy` : `Pay ₹${total.toLocaleString()} Online`}

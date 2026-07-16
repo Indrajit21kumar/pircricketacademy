@@ -9,9 +9,26 @@ export default function Contact() {
   const [form, setForm] = useState({ name:"", phone:"", email:"", childName:"", ageGroup:"", address:"", source:"", message:"" });
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string,string>>({});
+
+  const set = (k: string, v: string) => { setForm(p=>({...p,[k]:v})); setErrors(e=>({...e,[k]:""})); };
+  const validPhone = (v: string) => /^\d{10}$/.test(v.replace(/\D/g,"").replace(/^91/,""));
+
+  const validate = () => {
+    const e: Record<string,string> = {};
+    if (!form.name.trim()) e.name = "Parent name is required";
+    if (!form.phone.trim()) e.phone = "Phone number is required";
+    else if (!validPhone(form.phone)) e.phone = "Enter a valid 10-digit mobile number";
+    if (!form.childName.trim()) e.childName = "Child's name is required";
+    if (!form.ageGroup) e.ageGroup = "Please select an age group";
+    if (!form.address.trim()) e.address = "Address is required";
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validate()) return;
     setLoading(true);
     const msg = [
       `🏏 *New Admission Enquiry — PIR Cricket Academy*`,
@@ -94,29 +111,44 @@ export default function Contact() {
 
           <motion.form initial={{opacity:0,y:20}} whileInView={{opacity:1,y:0}} viewport={{once:true}} onSubmit={submit} className="md:col-span-2 bg-card border border-border rounded-2xl p-6 space-y-4">
             <div className="grid sm:grid-cols-2 gap-4">
-              <div><label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">Your Name *</label>
-                <input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})} className="w-full bg-background border border-border rounded-lg px-4 py-3 text-foreground text-sm focus:outline-none focus:border-secondary transition-colors" placeholder="Ramesh Kumar" /></div>
-              <div><label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">Phone Number *</label>
-                <input required value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})} className="w-full bg-background border border-border rounded-lg px-4 py-3 text-foreground text-sm focus:outline-none focus:border-secondary transition-colors" placeholder="+91 98765 43210" /></div>
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">Your Name *</label>
+                <input value={form.name} onChange={e=>set("name",e.target.value)} className={`w-full bg-background border rounded-lg px-4 py-3 text-foreground text-sm focus:outline-none transition-colors ${errors.name?"border-red-400 focus:border-red-400":"border-border focus:border-secondary"}`} placeholder="Ramesh Kumar"/>
+                {errors.name && <p className="text-red-400 text-xs mt-1">{errors.name}</p>}
+              </div>
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">Phone Number *</label>
+                <input value={form.phone} onChange={e=>set("phone",e.target.value)} className={`w-full bg-background border rounded-lg px-4 py-3 text-foreground text-sm focus:outline-none transition-colors ${errors.phone?"border-red-400 focus:border-red-400":"border-border focus:border-secondary"}`} placeholder="+91 98765 43210"/>
+                {errors.phone && <p className="text-red-400 text-xs mt-1">{errors.phone}</p>}
+              </div>
             </div>
             <div className="grid sm:grid-cols-2 gap-4">
-              <div><label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">Child's Name *</label>
-                <input required value={form.childName} onChange={e=>setForm({...form,childName:e.target.value})} className="w-full bg-background border border-border rounded-lg px-4 py-3 text-foreground text-sm focus:outline-none focus:border-secondary transition-colors" placeholder="Arjun Kumar" /></div>
-              <div><label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">Age Group *</label>
-                <select required value={form.ageGroup} onChange={e=>setForm({...form,ageGroup:e.target.value})} className="w-full bg-background border border-border rounded-lg px-4 py-3 text-foreground text-sm focus:outline-none focus:border-secondary transition-colors">
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">Child's Name *</label>
+                <input value={form.childName} onChange={e=>set("childName",e.target.value)} className={`w-full bg-background border rounded-lg px-4 py-3 text-foreground text-sm focus:outline-none transition-colors ${errors.childName?"border-red-400 focus:border-red-400":"border-border focus:border-secondary"}`} placeholder="Arjun Kumar"/>
+                {errors.childName && <p className="text-red-400 text-xs mt-1">{errors.childName}</p>}
+              </div>
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">Age Group *</label>
+                <select value={form.ageGroup} onChange={e=>set("ageGroup",e.target.value)} className={`w-full bg-background border rounded-lg px-4 py-3 text-foreground text-sm focus:outline-none transition-colors ${errors.ageGroup?"border-red-400 focus:border-red-400":"border-border focus:border-secondary"}`}>
                   <option value="">Select age group</option>
                   {AGE_GROUPS.map(a=><option key={a} value={a}>{a}</option>)}
-                </select></div>
+                </select>
+                {errors.ageGroup && <p className="text-red-400 text-xs mt-1">{errors.ageGroup}</p>}
+              </div>
             </div>
-            <div><label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">Student's Address *</label>
-              <input required value={form.address} onChange={e=>setForm({...form,address:e.target.value})} className="w-full bg-background border border-border rounded-lg px-4 py-3 text-foreground text-sm focus:outline-none focus:border-secondary transition-colors" placeholder="House No., Area, Patna, Bihar" /></div>
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">Student's Address *</label>
+              <input value={form.address} onChange={e=>set("address",e.target.value)} className={`w-full bg-background border rounded-lg px-4 py-3 text-foreground text-sm focus:outline-none transition-colors ${errors.address?"border-red-400 focus:border-red-400":"border-border focus:border-secondary"}`} placeholder="House No., Area, Patna, Bihar"/>
+              {errors.address && <p className="text-red-400 text-xs mt-1">{errors.address}</p>}
+            </div>
             <div><label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">How did you hear about us?</label>
-              <select value={form.source} onChange={e=>setForm({...form,source:e.target.value})} className="w-full bg-background border border-border rounded-lg px-4 py-3 text-foreground text-sm focus:outline-none focus:border-secondary transition-colors">
+              <select value={form.source} onChange={e=>set("source",e.target.value)} className="w-full bg-background border border-border rounded-lg px-4 py-3 text-foreground text-sm focus:outline-none focus:border-secondary transition-colors">
                 <option value="">Select source</option>
                 {SOURCES.map(s=><option key={s} value={s}>{s}</option>)}
               </select></div>
             <div><label className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5 block">Message (optional)</label>
-              <textarea value={form.message} onChange={e=>setForm({...form,message:e.target.value})} rows={3} className="w-full bg-background border border-border rounded-lg px-4 py-3 text-foreground text-sm focus:outline-none focus:border-secondary transition-colors resize-none" placeholder="Any questions or specific requirements..." /></div>
+              <textarea value={form.message} onChange={e=>set("message",e.target.value)} rows={3} className="w-full bg-background border border-border rounded-lg px-4 py-3 text-foreground text-sm focus:outline-none focus:border-secondary transition-colors resize-none" placeholder="Any questions or specific requirements..."/></div>
 
             <button type="submit" disabled={loading} className="w-full bg-secondary text-secondary-foreground font-bold uppercase tracking-wide py-4 rounded-xl hover:bg-secondary/90 transition-all shadow-[0_0_20px_rgba(234,179,8,0.2)] flex items-center justify-center gap-2 text-base disabled:opacity-60">
               {loading ? "Sending..." : <><Send className="h-5 w-5" />Register My Interest</>}
