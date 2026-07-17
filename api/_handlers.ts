@@ -302,6 +302,16 @@ async function handleAdmissions(req: VercelRequest, res: VercelResponse, sub: st
       paymentStatus: "paid", totalPaid: amount, paidAt: new Date(),
       razorpayPaymentId: note || "CASH",
     }).where(eq(admissions.id, id)).returning();
+    if (!row) return res.status(404).json({ error: "Admission not found" });
+    // Send same notifications as online payment — cash admissions must also notify admin + parent
+    sendAdmissionNotifications({
+      studentName: row.studentName, ageGroup: row.ageGroup, parentName: row.parentName,
+      phone: row.phone, email: row.email ?? undefined, isTrial: row.isTrial,
+      trialDate: row.trialDate ?? undefined, school: row.school ?? undefined,
+      asthma: row.asthma, emergencyName: row.emergencyName, emergencyPhone: row.emergencyPhone,
+      dob: row.dob, address: row.address ?? undefined,
+      razorpayPaymentId: note || "CASH", admissionId: row.id,
+    }).catch(() => {});
     return res.json(row);
   }
 
