@@ -9,18 +9,58 @@ function LoginScreen({ onLogin }: { onLogin: (data: any) => void }) {
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError]   = useState("");
+  const [multiStudents, setMultiStudents] = useState<any[]>([]);
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault(); setLoading(true); setError("");
+  const fetchStudent = async (phoneVal: string, studentId?: number) => {
+    setLoading(true); setError("");
     try {
-      const res = await fetch(`/api/student-portal?phone=${encodeURIComponent(phone.trim())}`);
+      const url = `/api/student-portal?phone=${encodeURIComponent(phoneVal.trim())}${studentId ? `&studentId=${studentId}` : ""}`;
+      const res = await fetch(url);
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Not found"); }
       const data = await res.json();
+      if (data.multipleStudents) {
+        setMultiStudents(data.students);
+        setLoading(false);
+        return;
+      }
       sessionStorage.setItem("pir_student_session", JSON.stringify({ loggedIn: true }));
       onLogin(data);
     } catch (err: any) { setError(err.message); }
     finally { setLoading(false); }
   };
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await fetchStudent(phone);
+  };
+
+  // Student picker when a parent has multiple children
+  if (multiStudents.length > 0) {
+    return (
+      <div className="min-h-screen bg-[#0a0f1e] flex items-center justify-center p-4">
+        <motion.div initial={{opacity:0,y:30}} animate={{opacity:1,y:0}} className="w-full max-w-sm">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-yellow-500/10 border-2 border-yellow-500/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <span className="font-bold text-yellow-400 text-2xl">PIR</span>
+            </div>
+            <h1 className="text-2xl font-bold text-white mb-1">Select Student</h1>
+            <p className="text-gray-400 text-sm">Multiple students found for this number</p>
+          </div>
+          <div className="space-y-3">
+            {multiStudents.map((s: any) => (
+              <button key={s.id} onClick={() => fetchStudent(phone, s.id)}
+                className="w-full bg-[#0d1529] border border-gray-700 hover:border-yellow-500/60 rounded-2xl p-4 text-left transition-all">
+                <p className="font-bold text-white text-base">{s.name}</p>
+                <p className="text-gray-400 text-sm mt-0.5">{s.ageGroup}{s.batchName ? ` · ${s.batchName}` : ""}</p>
+                <span className={`text-xs font-bold mt-1 inline-block px-2 py-0.5 rounded-full ${s.status === "active" ? "bg-green-500/15 text-green-400" : "bg-gray-500/15 text-gray-400"}`}>{s.status}</span>
+              </button>
+            ))}
+          </div>
+          <button onClick={() => setMultiStudents([])} className="w-full mt-4 text-gray-500 text-sm hover:text-gray-300">← Back</button>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#0a0f1e] flex items-center justify-center p-4">
@@ -53,9 +93,10 @@ function LoginScreen({ onLogin }: { onLogin: (data: any) => void }) {
             {loading ? "Searching..." : "View My Progress"}
           </button>
         </form>
-        <p className="text-center text-gray-600 text-xs mt-6">
-          Use the phone number registered with the academy.<br />
-          <a href="https://wa.me/918936061688" target="_blank" rel="noreferrer" className="text-yellow-500 hover:text-yellow-400">Contact academy</a> if you need help.
+        <p className="text-center text-gray-500 text-xs mt-6 leading-relaxed">
+          Use the <strong className="text-gray-400">10-digit mobile number</strong> registered at the academy.<br />
+          Your account is created by the academy after joining.<br className="mb-1" />
+          <a href="https://wa.me/918936061688" target="_blank" rel="noreferrer" className="text-yellow-500 hover:text-yellow-400">Contact academy on WhatsApp</a> if you need help.
         </p>
       </motion.div>
     </div>

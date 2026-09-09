@@ -9,6 +9,18 @@ import {
 const inp = "w-full bg-[#0a0f1e] border border-gray-700 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-yellow-500";
 const lbl = "block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1.5";
 
+function apiFetch(path: string, options: RequestInit = {}) {
+  const token = localStorage.getItem("pir_admin_token");
+  return fetch(path, {
+    ...options,
+    headers: {
+      ...(options.headers || {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options.body ? { "Content-Type": "application/json" } : {}),
+    },
+  });
+}
+
 const CATEGORIES = ["all", "welcome", "fees", "attendance", "trial", "general"];
 const CAT_COLOR: Record<string, string> = {
   welcome:    "bg-green-500/15 text-green-400",
@@ -19,10 +31,11 @@ const CAT_COLOR: Record<string, string> = {
 };
 
 const AUDIENCE_OPTIONS = [
-  { value: "all",      label: "All Students" },
-  { value: "active",   label: "Active Students Only" },
-  { value: "trial",    label: "Trial Students Only" },
-  { value: "fee_due",  label: "Students with Fee Due" },
+  { value: "all",         label: "Everyone (Students + Admission Forms)" },
+  { value: "admissions",  label: "Admission Form Submissions (All)" },
+  { value: "active",      label: "Enrolled Students — Active" },
+  { value: "trial",       label: "Enrolled Students — Trial" },
+  { value: "fee_due",     label: "Students with Fee Due" },
 ];
 
 type Template = { id: number; name: string; category: string; content: string; createdBy: string };
@@ -37,13 +50,13 @@ function TemplatesTab({ onUse }: { onUse: (t: Template) => void }) {
   const [form, setForm] = useState({ name: "", category: "general", content: "", createdBy: localStorage.getItem("crmUser") || "Admin" });
   const [copied, setCopied] = useState<number | null>(null);
 
-  const load = () => fetch("/api/templates").then(r => r.json()).then(d => setTemplates(Array.isArray(d) ? d : []));
+  const load = () => apiFetch("/api/templates").then(r => r.json()).then(d => setTemplates(Array.isArray(d) ? d : []));
   useEffect(() => { load(); }, []);
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    await fetch("/api/templates", {
-      method: "POST", headers: { "Content-Type": "application/json" },
+    await apiFetch("/api/templates", {
+      method: "POST",
       body: JSON.stringify(form),
     });
     setShowForm(false);
@@ -53,7 +66,7 @@ function TemplatesTab({ onUse }: { onUse: (t: Template) => void }) {
 
   const del = async (id: number) => {
     if (!confirm("Delete this template?")) return;
-    await fetch(`/api/templates?id=${id}`, { method: "DELETE" });
+    await apiFetch(`/api/templates?id=${id}`, { method: "DELETE" });
     load();
   };
 
@@ -134,128 +147,137 @@ function TemplatesTab({ onUse }: { onUse: (t: Template) => void }) {
 }
 
 // ─── Send Campaign Tab ────────────────────────────────────────────────
+const PLACEHOLDER = "Dear {{parentName}},\n\nThis is a message from PIR Cricket Academy regarding {{childName}}.\n\n[Your message here]\n\nRegards,\nPIR Cricket Academy\n+91 89360 61688";
+
 function SendTab({ initialTemplate, batches }: { initialTemplate: Template | null; batches: any[] }) {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [message, setMessage] = useState(initialTemplate?.content || "");
   const [audience, setAudience] = useState("all");
+  const [filter, setFilter] = useState("");
   const [campaignName, setCampaignName] = useState("");
   const [createdBy, setCreatedBy] = useState(localStorage.getItem("crmUser") || "Admin");
-  const [recipients, setRecipients] = useState<Recipient[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [allContacts, setAllContacts] = useState<Recipient[]>([]);
+  const [loading, setLoading] = useState(true);
   const [sent, setSent] = useState<Set<number>>(new Set());
   const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
-    if (initialTemplate) { setMessage(initialTemplate.content); setStep(1); }
-  }, [initialTemplate]);
-
-  const preview = async () => {
-    if (!message.trim()) return;
+  // Load contacts immediately on mount and whenever audience changes
+  const loadContacts = async (aud: string, msg: string) => {
     setLoading(true);
-    const url = `/api/campaigns?preview=1&audience=${encodeURIComponent(audience)}&message=${encodeURIComponent(message)}`;
-    const data = await fetch(url).then(r => r.json());
-    setRecipients(data.recipients || []);
+    const safeMsg = msg.trim() || "Hello {{parentName}}";
+    const url = `/api/campaigns?preview=1&audience=${encodeURIComponent(aud)}&message=${encodeURIComponent(safeMsg)}`;
+    try {
+      const data = await apiFetch(url).then(r => r.json());
+      setAllContacts(data.recipients || []);
+    } catch { setAllContacts([]); }
     setLoading(false);
-    setStep(2);
   };
+
+  useEffect(() => { loadContacts(audience, message); }, [audience]);
+  useEffect(() => { if (initialTemplate) setMessage(initialTemplate.content); }, [initialTemplate]);
 
   const markSent = (id: number) => setSent(prev => new Set([...prev, id]));
 
   const saveCampaign = async () => {
     if (!campaignName) return;
     if (createdBy) localStorage.setItem("crmUser", createdBy);
-    await fetch("/api/campaigns", {
-      method: "POST", headers: { "Content-Type": "application/json" },
+    await apiFetch("/api/campaigns", {
+      method: "POST",
       body: JSON.stringify({ name: campaignName, audience, message, sentCount: sent.size, createdBy }),
     });
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   };
 
-  const audienceLabel = AUDIENCE_OPTIONS.find(a => a.value === audience)?.label
-    || batches.find(b => `batch:${b.id}` === audience)?.name
-    || audience;
+  // Re-resolve WhatsApp URLs whenever message changes
+  const today = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+  const resolveMsg = (r: Recipient) => {
+    const m = (message.trim() || PLACEHOLDER)
+      .replace(/\{\{childName\}\}/g, r.name)
+      .replace(/\{\{parentName\}\}/g, r.parentName)
+      .replace(/\{\{batch\}\}/g, r.batch)
+      .replace(/\{\{date\}\}/g, today);
+    const phone10 = r.phone.replace(/\D/g, "").slice(-10);
+    return { ...r, message: m, whatsappUrl: `https://wa.me/91${phone10}?text=${encodeURIComponent(m)}` };
+  };
+
+  const filtered = allContacts
+    .filter(r => !filter || r.name.toLowerCase().includes(filter.toLowerCase()) || r.parentName.toLowerCase().includes(filter.toLowerCase()) || r.phone.includes(filter))
+    .map(resolveMsg);
 
   return (
-    <div className="max-w-2xl">
-      {/* Step indicator */}
-      <div className="flex items-center gap-2 mb-6">
-        {[1, 2, 3].map(s => (
-          <div key={s} className="flex items-center gap-2">
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${step >= s ? "bg-yellow-500 text-black" : "bg-gray-800 text-gray-500"}`}>{s}</div>
-            {s < 3 && <div className={`h-0.5 w-8 ${step > s ? "bg-yellow-500" : "bg-gray-800"}`} />}
+    <div className="grid md:grid-cols-2 gap-6">
+
+      {/* Left: Compose */}
+      <div className="space-y-4">
+        <div>
+          <label className={lbl}>Filter by audience</label>
+          <select className={inp} value={audience} onChange={e => setAudience(e.target.value)}>
+            {AUDIENCE_OPTIONS.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
+            {batches.map(b => <option key={b.id} value={`batch:${b.id}`}>Batch: {b.name}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className={lbl}>Message</label>
+          <p className="text-xs text-gray-600 mb-1.5">Variables: <code className="text-yellow-400">{"{{childName}} {{parentName}} {{batch}} {{date}}"}</code></p>
+          <textarea rows={10} className={inp} value={message} onChange={e => setMessage(e.target.value)} placeholder={PLACEHOLDER} />
+        </div>
+        {/* Save campaign */}
+        <div className="bg-[#0a0f1e] border border-gray-800 rounded-xl p-4 space-y-3">
+          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Save to History</p>
+          <input className={inp} value={campaignName} onChange={e => setCampaignName(e.target.value)} placeholder="Campaign name (e.g. Practice Reminder Aug)" />
+          <div className="flex gap-2">
+            <input className="flex-1 bg-[#0a0f1e] border border-gray-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none" value={createdBy} onChange={e => setCreatedBy(e.target.value)} placeholder="Your name" />
+            <button onClick={saveCampaign} disabled={!campaignName || saved}
+              className="flex items-center gap-2 bg-[#0d1529] border border-yellow-500/30 text-yellow-400 font-bold px-4 py-2.5 rounded-xl text-sm hover:border-yellow-500/60 disabled:opacity-50">
+              {saved ? <><CheckCircle className="h-4 w-4 text-green-400" /> Saved!</> : <><History className="h-4 w-4" /> Save</>}
+            </button>
           </div>
-        ))}
-        <span className="text-xs text-gray-500 ml-2">{step === 1 ? "Compose" : step === 2 ? "Preview & Send" : "Done"}</span>
+        </div>
       </div>
 
-      {step === 1 && (
-        <div className="space-y-5">
+      {/* Right: Recipients */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
           <div>
-            <label className={lbl}>Audience</label>
-            <select className={inp} value={audience} onChange={e => setAudience(e.target.value)}>
-              {AUDIENCE_OPTIONS.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
-              {batches.map(b => <option key={b.id} value={`batch:${b.id}`}>Batch: {b.name}</option>)}
-            </select>
+            <p className="font-bold text-white">{loading ? "Loading..." : `${filtered.length} recipients`}</p>
+            <p className="text-xs text-gray-500">{sent.size} sent so far</p>
           </div>
-          <div>
-            <label className={lbl}>Message</label>
-            <p className="text-xs text-gray-600 mb-1.5">Variables: <code className="text-yellow-400">{"{{childName}} {{parentName}} {{batch}} {{date}}"}</code></p>
-            <textarea rows={8} className={inp} value={message} onChange={e => setMessage(e.target.value)} placeholder="Type your message here..." />
-          </div>
-          <button onClick={preview} disabled={!message.trim() || loading}
-            className="flex items-center gap-2 bg-yellow-500 text-black font-bold px-6 py-3 rounded-xl hover:bg-yellow-400 disabled:opacity-60">
-            <Eye className="h-4 w-4" />{loading ? "Loading..." : "Preview Recipients"}
-          </button>
+          <input value={filter} onChange={e => setFilter(e.target.value)} placeholder="Search name / phone..." className="bg-[#0a0f1e] border border-gray-700 rounded-xl px-3 py-1.5 text-white text-xs focus:outline-none w-40" />
         </div>
-      )}
 
-      {step === 2 && (
-        <div className="space-y-4">
-          <div className="bg-[#0a0f1e] border border-yellow-500/20 rounded-xl p-4 flex items-center justify-between">
-            <div>
-              <p className="font-bold text-white">{recipients.length} recipients</p>
-              <p className="text-xs text-gray-400">{audienceLabel} · {sent.size} sent so far</p>
-            </div>
-            <button onClick={() => setStep(1)} className="text-xs text-gray-500 hover:text-gray-300">← Edit</button>
+        {loading ? (
+          <div className="flex items-center justify-center py-16 text-gray-500 text-sm gap-2">
+            <div className="w-4 h-4 border-2 border-yellow-500 border-t-transparent rounded-full animate-spin" />
+            Loading contacts…
           </div>
-
-          <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
-            {recipients.map(r => (
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-12">
+            <Users className="h-10 w-10 mx-auto text-gray-700 mb-3" />
+            <p className="text-gray-400 font-bold text-sm">No contacts found</p>
+            <p className="text-gray-600 text-xs mt-1">Try "Everyone (Students + Admission Forms)"</p>
+          </div>
+        ) : (
+          <div className="space-y-2 max-h-[520px] overflow-y-auto pr-1">
+            {filtered.map(r => (
               <div key={r.studentId} className={`bg-[#0a0f1e] border rounded-xl p-3 flex items-center justify-between gap-3 transition-all ${sent.has(r.studentId) ? "border-green-500/30 opacity-60" : "border-gray-800"}`}>
                 <div className="min-w-0">
                   <p className="font-bold text-white text-sm truncate">{r.name}</p>
-                  <p className="text-xs text-gray-400">{r.parentName} · {r.phone} · {r.batch}</p>
+                  <p className="text-xs text-gray-400 truncate">{r.parentName} · {r.phone}</p>
+                  <p className="text-xs text-gray-600">{r.batch}</p>
                 </div>
                 <a href={r.whatsappUrl} target="_blank" rel="noreferrer" onClick={() => markSent(r.studentId)}
-                  className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${sent.has(r.studentId) ? "bg-green-500/10 text-green-400 border border-green-500/30" : "bg-green-600 text-white hover:bg-green-500"}`}>
+                  className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all ${sent.has(r.studentId) ? "bg-green-500/10 text-green-400 border border-green-500/30" : "bg-green-600 text-white hover:bg-green-500"}`}>
                   {sent.has(r.studentId) ? <CheckCircle className="h-3.5 w-3.5" /> : <ExternalLink className="h-3.5 w-3.5" />}
                   {sent.has(r.studentId) ? "Sent" : "Send"}
                 </a>
               </div>
             ))}
           </div>
-
-          {recipients.length === 0 && (
-            <div className="text-center py-8 text-gray-500">No students match this audience.</div>
-          )}
-
-          {/* Save campaign */}
-          <div className="bg-[#0a0f1e] border border-gray-800 rounded-xl p-4 space-y-3">
-            <p className="text-sm font-bold text-gray-400">Save to history</p>
-            <div className="flex gap-3">
-              <input className={inp} value={campaignName} onChange={e => setCampaignName(e.target.value)} placeholder="Campaign name (e.g. June Fee Reminder)" />
-              <input className="bg-[#0a0f1e] border border-gray-700 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none w-40 shrink-0" value={createdBy} onChange={e => setCreatedBy(e.target.value)} placeholder="Your name" />
-            </div>
-            <button onClick={saveCampaign} disabled={!campaignName || saved}
-              className="flex items-center gap-2 bg-[#0d1529] border border-yellow-500/30 text-yellow-400 font-bold px-5 py-2.5 rounded-xl text-sm hover:border-yellow-500/60 disabled:opacity-50">
-              {saved ? <><CheckCircle className="h-4 w-4 text-green-400" /> Saved!</> : <><History className="h-4 w-4" /> Save Campaign</>}
-            </button>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
+
 }
 
 // ─── History Tab ──────────────────────────────────────────────────────
@@ -264,7 +286,7 @@ function HistoryTab() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/campaigns").then(r => r.json()).then(d => {
+    apiFetch("/api/campaigns").then(r => r.json()).then(d => {
       setCampaigns(Array.isArray(d) ? d : []);
       setLoading(false);
     });

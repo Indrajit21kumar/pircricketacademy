@@ -3,7 +3,7 @@ import { Link } from "wouter";
 import {
   Users, Phone, MessageCircle, ChevronRight, ChevronLeft, X, Plus,
   Clock, CheckCircle, XCircle, TrendingUp, Calendar,
-  ArrowRight, Save, AlertCircle, BarChart3
+  ArrowRight, Save, AlertCircle, BarChart3, Trash2
 } from "lucide-react";
 
 const TODAY = new Date().toISOString().split("T")[0];
@@ -119,6 +119,13 @@ function LeadDrawer({ lead, onClose, onUpdate }: { lead: Lead; onClose: () => vo
   const [followUps, setFollowUps] = useState<FollowUp[]>([]);
   const [form, setForm] = useState({ notes: "", nextFollowUpDate: "", createdBy: localStorage.getItem("crmUser") || "" });
   const [saving, setSaving] = useState(false);
+
+  const deleteLead = async () => {
+    if (!confirm(`Delete inquiry from ${lead.name} (${lead.childName})? This cannot be undone.`)) return;
+    await fetch(`/api/inquiries/${lead.id}`, { method: "DELETE", headers: authHeaders() });
+    onUpdate();
+    onClose();
+  };
   const stage = STAGES.find(s => s.id === lead.status);
   const nextStageId = NEXT_STAGE[lead.status];
   const nextStage = STAGES.find(s => s.id === nextStageId);
@@ -146,10 +153,10 @@ function LeadDrawer({ lead, onClose, onUpdate }: { lead: Lead; onClose: () => vo
   };
 
   const moveStage = async (status: string) => {
-    await fetch("/api/inquiries", {
+    await fetch(`/api/inquiries/${lead.id}/status`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", ...authHeaders() },
-      body: JSON.stringify({ id: lead.id, status }),
+      body: JSON.stringify({ status }),
     });
     onUpdate();
     onClose();
@@ -166,7 +173,10 @@ function LeadDrawer({ lead, onClose, onUpdate }: { lead: Lead; onClose: () => vo
             <h2 className="font-bold text-white">{lead.name}</h2>
             <p className="text-xs text-gray-400">Lead #{lead.id} · {new Date(lead.createdAt).toLocaleDateString("en-IN")}</p>
           </div>
-          <button onClick={onClose} className="p-2 text-gray-400 hover:text-white"><X className="h-5 w-5" /></button>
+          <div className="flex items-center gap-1">
+            <button onClick={deleteLead} className="p-2 text-gray-500 hover:text-red-400 transition-colors" title="Delete inquiry"><Trash2 className="h-4 w-4" /></button>
+            <button onClick={onClose} className="p-2 text-gray-400 hover:text-white"><X className="h-5 w-5" /></button>
+          </div>
         </div>
 
         <div className="p-5 space-y-5">

@@ -12,7 +12,7 @@ export default function Contact() {
   const [errors, setErrors] = useState<Record<string,string>>({});
 
   const set = (k: string, v: string) => { setForm(p=>({...p,[k]:v})); setErrors(e=>({...e,[k]:""})); };
-  const validPhone = (v: string) => /^\d{10}$/.test(v.replace(/\D/g,"").replace(/^91/,""));
+  const validPhone = (v: string) => { const d = v.replace(/\D/g,""); const n = d.length === 12 && d.startsWith("91") ? d.slice(2) : d; return /^\d{10}$/.test(n); };
 
   const validate = () => {
     const e: Record<string,string> = {};
@@ -26,26 +26,27 @@ export default function Contact() {
     return Object.keys(e).length === 0;
   };
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
     setLoading(true);
-    const msg = [
-      `🏏 *New Admission Enquiry — PIR Cricket Academy*`,
-      ``,
-      `👤 *Parent Name:* ${form.name}`,
-      `📞 *Phone:* ${form.phone}`,
-      form.email ? `📧 *Email:* ${form.email}` : null,
-      `🧒 *Child's Name:* ${form.childName}`,
-      `📅 *Age Group:* ${form.ageGroup}`,
-      `🏠 *Address:* ${form.address}`,
-      form.source ? `📣 *How they heard:* ${form.source}` : null,
-      form.message ? `💬 *Message:* ${form.message}` : null,
-    ].filter(Boolean).join("\n");
-
-    window.open(`https://wa.me/918936061688?text=${encodeURIComponent(msg)}`, "_blank");
-    setLoading(false);
-    setSent(true);
+    try {
+      const res = await fetch("/api/inquiries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.name, phone: form.phone, email: form.email || undefined,
+          childName: form.childName, ageGroup: form.ageGroup,
+          source: form.source || undefined, message: form.message || undefined,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setSent(true);
+    } catch {
+      alert("Something went wrong. Please try again or WhatsApp us directly.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (sent) return (

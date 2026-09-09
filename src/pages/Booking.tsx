@@ -14,7 +14,7 @@ const FACILITIES = [
   { id:"box",     name:"Box Cricket Arena",   emoji:"🏟️", pricing:{weekday:1500, weekend:1800, night:2200},  unit:"hr",   durations:[1,2,3] },
   { id:"turf",    name:"Turf Wicket",         emoji:"🏏", pricing:{weekday:800,  weekend:1000, night:null},   unit:"hr",   durations:[1,2,3] },
   { id:"cement",  name:"Astro Turf / Cemented Wicket", emoji:"⚡", pricing:{weekday:500, weekend:700, night:null}, unit:"hr", durations:[1,2,3] },
-  { id:"bowling", name:"Bowling Machine Bay", emoji:"🎳", pricing:{weekday:300,  weekend:400,  night:null},   unit:"30min",durations:[1,2] },
+  { id:"bowling", name:"Bowling Machine Bay", emoji:"🎯", pricing:{weekday:300,  weekend:400,  night:null},   unit:"30min",durations:[1,2] },
 ];
 const SLOTS = ["06:00 AM","07:00 AM","08:00 AM","09:00 AM","10:00 AM","11:00 AM","12:00 PM","01:00 PM","02:00 PM","03:00 PM","04:00 PM","05:00 PM","06:00 PM","07:00 PM","08:00 PM","09:00 PM"];
 
@@ -53,11 +53,12 @@ export default function Booking() {
   const [serverError, setServerError] = useState("");
   const [payMode, setPayMode] = useState<"online"|"cash">("online");
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
+  const [blockedSlots, setBlockedSlots] = useState<any[]>([]);
   const [slotPopup, setSlotPopup] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string,string>>({});
 
   const setSel2 = (k: string, v: any) => { setSel(p=>({...p,[k]:v})); setFieldErrors(e=>({...e,[k]:""})); };
-  const validPhone = (v: string) => /^\d{10}$/.test(v.replace(/\D/g,"").replace(/^91/,""));
+  const validPhone = (v: string) => { const d = v.replace(/\D/g,""); const n = d.length === 12 && d.startsWith("91") ? d.slice(2) : d; return /^\d{10}$/.test(n); };
 
   const validateDetails = () => {
     const e: Record<string,string> = {};
@@ -79,11 +80,21 @@ export default function Booking() {
   const fetchBookedSlots = useCallback(async (facility: string, date: string) => {
     if (!facility || !date) return;
     try {
-      const res = await fetch(`/api/bookings/slots?date=${date}&facility=${facility}`);
-      const data = await res.json();
-      setBookedSlots(data.bookedSlots || []);
-    } catch { setBookedSlots([]); }
+      const [slotsRes, blocksRes] = await Promise.all([
+        fetch(`/api/bookings/slots?date=${date}&facility=${facility}`),
+        fetch(`/api/blocked-slots?date=${date}&facility=${facility}`),
+      ]);
+      const slotsData = await slotsRes.json();
+      const blocksData = await blocksRes.json();
+      setBookedSlots(slotsData.bookedSlots || []);
+      setBlockedSlots(Array.isArray(blocksData) ? blocksData : []);
+    } catch { setBookedSlots([]); setBlockedSlots([]); }
   }, []);
+
+  // Refetch availability whenever step 2 is shown or facility/date changes
+  useEffect(() => {
+    if (step === 2 && sel.facility && sel.date) fetchBookedSlots(sel.facility, sel.date);
+  }, [step, sel.facility, sel.date, fetchBookedSlots]);
 
   const facility = FACILITIES.find(f => f.id === sel.facility);
   const rate = facility ? getRate(facility, sel.slot, sel.date) : 0;
@@ -225,6 +236,11 @@ export default function Booking() {
               Payment received · Confirmation email sent to <strong>{sel.email}</strong>
             </div>
           )}
+          <div className="mt-6 p-4 bg-muted/30 border border-border rounded-xl text-left">
+            <p className="text-xs text-muted-foreground font-semibold mb-1">Need to cancel?</p>
+            <p className="text-xs text-muted-foreground mb-2">You can cancel at least 24 hours before your slot. A 10% cancellation fee applies. 90% is refunded within 2–3 business days.</p>
+            <a href="/booking/cancel" className="text-xs text-secondary hover:underline font-semibold">Cancel this booking →</a>
+          </div>
         </motion.div>
       </div>
       <Footer />
@@ -279,25 +295,39 @@ export default function Booking() {
             <h2 className="font-display text-2xl font-bold mb-6">Select Date & Time</h2>
             <div className="bg-card border border-border rounded-2xl p-6 space-y-5">
               <div><label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2"><Calendar className="h-4 w-4 inline mr-1.5"/>Date</label>
-                <input type="date" min={today} value={sel.date} onChange={e=>{setSel({...sel,date:e.target.value,slot:""});fetchBookedSlots(sel.facility,e.target.value);}} className="w-full bg-background border border-border rounded-lg px-4 py-3 text-foreground text-sm focus:outline-none focus:border-secondary transition-colors"/></div>
+                <input type="date" min={today} value={sel.date} onChange={e=>{setSel({...sel,date:e.target.value,slot:""});fetchBookedSlots(sel.facility,e.target.value);}} className="w-full bg-muted border border-border rounded-lg px-4 py-3 text-foreground text-sm focus:outline-none focus:border-secondary transition-colors [color-scheme:dark]" style={{colorScheme:"dark"}}/></div>
+              {blockedSlots.some(b => !b.slot) && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 flex items-center gap-2 text-sm text-red-400">
+                  <span className="text-lg">🚫</span>
+                  <div><p className="font-bold">Bookings Blocked</p><p className="text-xs text-red-300">{blockedSlots.find(b=>!b.slot)?.reason || "This date is not available for bookings."}</p></div>
+                </div>
+              )}
               <div><label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-2"><Clock className="h-4 w-4 inline mr-1.5"/>Time Slot</label>
                 <div className="grid grid-cols-4 gap-2">
                   {SLOTS.map(s=>{
                     const isBooked = bookedSlots.includes(s);
+                    const blockEntry = blockedSlots.find(b => (!b.slot || b.slot === s));
+                    const isBlocked = !!blockEntry;
+                    const isUnavailable = isBooked || isBlocked;
                     return (
                       <button key={s}
                         onClick={()=>{
                           if(isBooked){setSlotPopup(s);return;}
+                          if(isBlocked) return;
                           setSel({...sel,slot:s});
                         }}
+                        title={isBlocked ? `Blocked: ${blockEntry?.reason}` : undefined}
                         className={`py-2.5 rounded-lg text-sm font-semibold border transition-all relative
                           ${isBooked
                             ? "bg-red-500/10 border-red-500/30 text-red-400 cursor-not-allowed"
-                            : sel.slot===s
-                              ? "bg-secondary text-secondary-foreground border-secondary"
-                              : "bg-background border-border hover:border-secondary/40"}`}>
+                            : isBlocked
+                              ? "bg-gray-500/10 border-gray-500/20 text-gray-500 cursor-not-allowed"
+                              : sel.slot===s
+                                ? "bg-secondary text-secondary-foreground border-secondary"
+                                : "bg-background border-border hover:border-secondary/40"}`}>
                         {s}
                         {isBooked && <span className="block text-[10px] font-normal mt-0.5">Booked</span>}
+                        {isBlocked && !isBooked && <span className="block text-[10px] font-normal mt-0.5">Blocked</span>}
                       </button>
                     );
                   })}
@@ -315,7 +345,7 @@ export default function Booking() {
                   <p className="text-xs text-muted-foreground mt-0.5">₹{rate}/{facility?.unit} × {durationLabel(facility!, sel.duration)}</p>
                 </div>
               )}
-              <button disabled={!sel.date||!sel.slot} onClick={()=>setStep(3)} className="w-full bg-secondary text-secondary-foreground font-bold uppercase py-4 rounded-xl hover:bg-secondary/90 transition-all disabled:opacity-40 disabled:cursor-not-allowed">Continue</button>
+              <button disabled={!sel.date||!sel.slot||blockedSlots.some(b=>!b.slot)} onClick={()=>setStep(3)} className="w-full bg-secondary text-secondary-foreground font-bold uppercase py-4 rounded-xl hover:bg-secondary/90 transition-all disabled:opacity-40 disabled:cursor-not-allowed">Continue</button>
             </div>
           </motion.div>
         )}

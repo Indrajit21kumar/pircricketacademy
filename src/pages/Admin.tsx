@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Link, useSearch } from "wouter";
-import { Users, TrendingUp, DollarSign, Activity, BarChart3, Calendar, X, RefreshCw, ExternalLink, Tag, Plus, Pencil, Trash2, CheckCircle, XCircle, FileText } from "lucide-react";
+import { Users, TrendingUp, DollarSign, Activity, BarChart3, Calendar, X, RefreshCw, ExternalLink, Tag, Plus, Pencil, Trash2, CheckCircle, XCircle, FileText, Send, Megaphone } from "lucide-react";
 import { GroundTrackerContent } from "./admin/GroundTracker";
 
 // ── Types ────────────────────────────────────────────────────────────────────
-interface Admission { id:number; studentName:string; ageGroup:string; parentName:string; phone:string; createdAt:string; status:string; isTrial:boolean; paymentStatus:string; registrationFee:number; totalPaid:number; packageMonths?:number|null; packageDiscountPct?:number|null; eligibilityDiscountPct?:number|null; combinedDiscountPct?:number|null; razorpayPaymentId?:string; paidAt?:string; }
-interface Booking   { id:number; ref:string; facilityName:string; date:string; slot:string; name:string; total:number; status:string; createdAt:string; }
+interface Admission { id:number; studentName:string; dob:string; ageGroup:string; school?:string|null; parentName:string; phone:string; email?:string|null; address?:string|null; bloodGroup?:string|null; createdAt:string; status:string; isTrial:boolean; paymentStatus:string; registrationFee:number; totalPaid:number; packageMonths?:number|null; packageDiscountPct?:number|null; eligibilityDiscountPct?:number|null; combinedDiscountPct?:number|null; razorpayPaymentId?:string; paidAt?:string; }
+interface Booking   { id:number; ref:string; facilityName:string; date:string; slot:string; name:string; phone:string; total:number; status:string; refundAmount?:number|null; createdAt:string; }
 interface Inquiry   { id:number; name:string; phone:string; childName:string; ageGroup:string; source:string; createdAt:string; status:string; }
 
 // ── Auth helpers ─────────────────────────────────────────────────────────────
@@ -25,7 +25,7 @@ async function apiFetch(path: string, opts: RequestInit = {}) {
   return res;
 }
 
-const TABS = ["Dashboard","Ground Tracker","Inquiries","Admissions","Bookings","Fees","Coaches","Discounts"];
+const TABS = ["Dashboard","Ground Tracker","Inquiries","Admissions","Bookings","Fees","Students","Coaches","Discounts","Broadcast"];
 
 const MODULES = [
   { label: "Students & QR",   href: "/admin/students",        color: "text-blue-400",   bg: "bg-blue-400/10" },
@@ -42,6 +42,7 @@ function StatusBadge({ s }: { s: string }) {
     new:"bg-secondary/10 text-secondary", contacted:"bg-blue-400/10 text-blue-400", converted:"bg-green-400/10 text-green-400",
     trial_scheduled:"bg-blue-400/10 text-blue-400", joined:"bg-green-400/10 text-green-400", rejected:"bg-red-400/10 text-red-400",
     confirmed:"bg-green-400/10 text-green-400", completed:"bg-muted text-muted-foreground", cancelled:"bg-red-400/10 text-red-400",
+    cancellation_requested:"bg-orange-400/10 text-orange-400", refunded:"bg-purple-400/10 text-purple-400",
   };
   return <span className={`text-xs font-bold px-2 py-1 rounded-full whitespace-nowrap ${map[s] ?? "bg-muted text-muted-foreground"}`}>{s.replace("_"," ")}</span>;
 }
@@ -182,28 +183,67 @@ export default function Admin() {
   const [loading, setLoading] = useState(false);
   const [cleanupDays, setCleanupDays] = useState(30);
   const [cleanupMsg, setCleanupMsg] = useState("");
+  const [enrolledIds, setEnrolledIds] = useState<Set<number>>(new Set());
   const [markPaidAdm, setMarkPaidAdm] = useState<Admission | null>(null);
   const [markPaidAmount, setMarkPaidAmount] = useState("");
   const [markPaidNote, setMarkPaidNote] = useState("");
   const [markPaidBooking, setMarkPaidBooking] = useState<Booking | null>(null);
   const [markPaidBookingNote, setMarkPaidBookingNote] = useState("");
+  const [emailTesting, setEmailTesting] = useState(false);
+  const [emailResult, setEmailResult] = useState<any>(null);
+  const [trialModal, setTrialModal] = useState<{id:number;name:string;parentName:string} | null>(null);
+  const [trialDate, setTrialDate] = useState("");
+  const [trialSlot, setTrialSlot] = useState("06:00 AM");
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [aRes, bRes, iRes] = await Promise.all([
-        apiFetch("/admissions"), apiFetch("/bookings"), apiFetch("/inquiries"),
+      const [aRes, bRes, iRes, sRes] = await Promise.all([
+        apiFetch("/admissions"), apiFetch("/bookings"), apiFetch("/inquiries"), apiFetch("/students"),
       ]);
-      if (aRes.ok) setAdmissions(await aRes.json());
+      const adms: Admission[] = aRes.ok ? await aRes.json() : [];
+      if (aRes.ok) setAdmissions(adms);
       if (bRes.ok) setBookings(await bRes.json());
       if (iRes.ok) setInquiries(await iRes.json());
+      if (sRes.ok) {
+        const studentRows: { student: { name: string; phone: string } }[] = await sRes.json();
+        // Build a set of enrolled admission IDs by matching phone+name
+        const enrolled = new Set<number>();
+        adms.forEach(a => {
+          const phone10 = a.phone.replace(/\D/g, "").slice(-10);
+          const nameLower = a.studentName.trim().toLowerCase();
+          const found = studentRows.some(r =>
+            r.student.phone.replace(/\D/g, "").slice(-10) === phone10 &&
+            r.student.name.trim().toLowerCase() === nameLower
+          );
+          if (found) enrolled.add(a.id);
+        });
+        setEnrolledIds(enrolled);
+      }
     } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { if (authed) load(); }, [authed, load]);
 
+  const enrollAsStudent = async (a: Admission) => {
+    await apiFetch("/students", {
+      method: "POST",
+      body: JSON.stringify({
+        name: a.studentName, dob: a.dob, ageGroup: a.ageGroup,
+        parentName: a.parentName, phone: a.phone,
+        email: a.email || undefined, address: a.address || undefined,
+        bloodGroup: a.bloodGroup || undefined, status: "active",
+      }),
+    });
+    setEnrolledIds(prev => new Set(prev).add(a.id));
+  };
+
   const updateStatus = async (type: string, id: number, status: string) => {
     await apiFetch(`/${type}/${id}/status`, { method:"PATCH", body: JSON.stringify({ status }) });
+    if (type === "admissions" && status === "joined") {
+      const adm = admissions.find(a => a.id === id);
+      if (adm) await enrollAsStudent(adm);
+    }
     load();
   };
 
@@ -284,6 +324,31 @@ export default function Admin() {
                   : <button key={k.label} onClick={()=>setTab((k as any).tab)} className={cardCls}>{inner}</button>;
               })}
             </div>
+            {/* Email diagnostic */}
+            <div className="mb-6 bg-card border border-border rounded-2xl p-5">
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div>
+                  <h3 className="font-bold text-sm">Email Diagnostics</h3>
+                  <p className="text-xs text-muted-foreground">Send a test email to admin inbox to verify Resend is working</p>
+                </div>
+                <button
+                  disabled={emailTesting}
+                  onClick={async () => {
+                    setEmailTesting(true); setEmailResult(null);
+                    const r = await apiFetch("/debug-email");
+                    setEmailResult(await r.json());
+                    setEmailTesting(false);
+                  }}
+                  className="px-4 py-2 bg-secondary text-black font-bold text-xs rounded-lg hover:bg-secondary/90 transition-colors disabled:opacity-50"
+                >{emailTesting ? "Testing…" : "Send Test Email"}</button>
+              </div>
+              {emailResult && (
+                <div className={`mt-3 p-3 rounded-lg text-xs font-mono border ${emailResult.ok ? "bg-green-500/10 border-green-500/30 text-green-400" : "bg-red-500/10 border-red-500/30 text-red-400"}`}>
+                  <pre className="whitespace-pre-wrap">{JSON.stringify(emailResult, null, 2)}</pre>
+                </div>
+              )}
+            </div>
+
             {/* Module quick-links */}
             <div className="mb-8">
               <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Management Modules</h3>
@@ -430,6 +495,14 @@ export default function Admin() {
                       {["new","contacted","converted"].map(s=>(
                         s !== i.status && <button key={s} onClick={()=>updateStatus("inquiries",i.id,s)} className="text-xs border border-border rounded-lg px-2.5 py-1 text-muted-foreground hover:text-foreground transition-colors">→ {s}</button>
                       ))}
+                      <button
+                        onClick={async()=>{
+                          if(!confirm(`Delete inquiry from ${i.name} (${i.childName})? This cannot be undone.`)) return;
+                          await apiFetch(`/inquiries/${i.id}`,{method:"DELETE"});
+                          setInquiries(prev=>prev.filter(x=>x.id!==i.id));
+                        }}
+                        className="text-xs border border-red-500/30 rounded-lg px-2.5 py-1 text-red-400 hover:bg-red-500/10 transition-colors"
+                      >Delete</button>
                     </div>
                   </div>
                 ))}
@@ -441,7 +514,12 @@ export default function Admin() {
         {/* Admissions */}
         {tab==="Admissions" && (
           <motion.div initial={{opacity:0}} animate={{opacity:1}}>
-            <div className="mb-4"><h2 className="font-display text-3xl font-bold">Admissions</h2><p className="text-muted-foreground">{admissions.length} total · {admissions.filter(a=>a.status==="new").length} new</p></div>
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+              <div><h2 className="font-display text-3xl font-bold">Admissions</h2><p className="text-muted-foreground">{admissions.length} total · {admissions.filter(a=>a.status==="new").length} new</p></div>
+              <Link href="/admin/scan-form" className="inline-flex items-center gap-2 bg-secondary text-black font-bold text-sm px-4 py-2.5 rounded-xl hover:bg-secondary/90 transition-colors shrink-0">
+                📷 Scan Paper Form
+              </Link>
+            </div>
             {/* Summary bar */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
               <div className="bg-card border border-border rounded-xl p-4"><p className="text-xl font-bold font-display">{admissions.length}</p><p className="text-xs text-muted-foreground">Total Applications</p></div>
@@ -451,52 +529,113 @@ export default function Admin() {
             </div>
             {admissions.length===0 ? <p className="text-muted-foreground">No applications yet.</p> :
               <div className="space-y-3">
-                {admissions.map(a=>(
-                  <div key={a.id} className="bg-card border border-border rounded-2xl p-5">
-                    <div className="flex flex-wrap items-start gap-4 justify-between">
-                      <div>
-                        <p className="font-bold">{a.studentName} <span className="text-xs text-muted-foreground font-normal">({a.ageGroup}{a.isTrial?" · Trial":""}) </span></p>
-                        <p className="text-sm text-muted-foreground">Parent: {a.parentName} · {a.phone}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">Applied: {new Date(a.createdAt).toLocaleDateString("en-IN")}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">Package: {a.packageMonths ? `${a.packageMonths}-Month Pack` : "Registration Only"}</p>
-                        {(a.combinedDiscountPct ?? 0) > 0 && (
-                          <p className="text-xs text-muted-foreground mt-0.5">Combined discount: {a.combinedDiscountPct}%{a.packageDiscountPct ? ` (${a.packageDiscountPct}% pkg` : ""}{ (a.packageDiscountPct ?? 0) > 0 && (a.eligibilityDiscountPct ?? 0) > 0 ? ` + ${a.eligibilityDiscountPct}% eligibility)` : (a.packageDiscountPct ? ")" : "")}</p>
-                        )}
-                        {a.razorpayPaymentId && (
-                          <p className="text-xs text-muted-foreground mt-0.5 font-mono">Payment: {a.razorpayPaymentId.slice(0,20)}…</p>
-                        )}
+                {admissions.map(a => {
+                  const isPaid = a.paymentStatus === "paid";
+                  const amountPaid = a.totalPaid || a.registrationFee || 5000;
+                  const stageColor = {
+                    new: "bg-blue-400/10 text-blue-400 border-blue-400/20",
+                    trial_scheduled: "bg-yellow-400/10 text-yellow-400 border-yellow-400/20",
+                    joined: "bg-green-400/10 text-green-400 border-green-400/20",
+                    rejected: "bg-red-400/10 text-red-400 border-red-400/20",
+                  }[a.status] || "bg-gray-400/10 text-gray-400 border-gray-400/20";
+                  const stageLabel = { new:"New", trial_scheduled:"Trial Scheduled", joined:"Joined", rejected:"Rejected" }[a.status] || a.status;
+
+                  return (
+                    <div key={a.id} className="bg-card border border-border rounded-2xl overflow-hidden">
+                      {/* Top row — name + stage */}
+                      <div className="flex items-center justify-between gap-3 px-5 pt-4 pb-3">
+                        <div className="min-w-0">
+                          <p className="font-bold text-base leading-tight truncate">{a.studentName}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">{a.ageGroup}{a.isTrial ? " · Trial" : ""} · {a.packageMonths ? `${a.packageMonths}-Month Pack` : "Registration Only"}</p>
+                        </div>
+                        <span className={`shrink-0 text-xs font-bold px-3 py-1 rounded-full border ${stageColor}`}>{stageLabel}</span>
                       </div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`text-xs font-bold px-2 py-1 rounded-full whitespace-nowrap ${
-                          a.paymentStatus==="paid" ? "bg-green-400/10 text-green-400" :
-                          a.paymentStatus==="pending" ? "bg-yellow-400/10 text-yellow-400" :
-                          a.paymentStatus==="failed" ? "bg-red-400/10 text-red-400" :
-                          "bg-blue-400/10 text-blue-400"
-                        }`}>
-                          {a.paymentStatus==="paid" ? `₹${(a.totalPaid||a.registrationFee||5000).toLocaleString()} paid` : a.paymentStatus}
+
+                      {/* Detail row */}
+                      <div className="px-5 pb-3 flex flex-wrap gap-x-6 gap-y-0.5 text-xs text-muted-foreground">
+                        <span>👤 {a.parentName} · {a.phone}</span>
+                        <span>📅 {new Date(a.createdAt).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"})}</span>
+                        {(a.combinedDiscountPct ?? 0) > 0 && <span>🏷 {a.combinedDiscountPct}% discount</span>}
+                        {a.razorpayPaymentId && <span className="font-mono">Ref: {a.razorpayPaymentId.slice(0,16)}…</span>}
+                      </div>
+
+                      {/* Action footer */}
+                      <div className="flex items-center justify-between gap-3 px-5 py-3 border-t border-border/50 bg-muted/20 flex-wrap">
+                        {/* Payment status */}
+                        <span className={`text-sm font-bold ${isPaid ? "text-green-400" : "text-yellow-400"}`}>
+                          {isPaid ? `₹${amountPaid.toLocaleString()} paid` : "Payment pending"}
                         </span>
-                        <StatusBadge s={a.status} />
-                        {["new","trial_scheduled","joined","rejected"].map(s=>(
-                          s !== a.status && <button key={s} onClick={()=>updateStatus("admissions",a.id,s)} className="text-xs border border-border rounded-lg px-2.5 py-1 text-muted-foreground hover:text-foreground transition-colors">→ {s.replace("_"," ")}</button>
-                        ))}
-                        {a.paymentStatus !== "paid" && (
-                          <button
-                            onClick={() => { setMarkPaidAdm(a); setMarkPaidAmount(String(a.totalPaid || 5000)); setMarkPaidNote(""); }}
-                            className="text-xs text-green-400 hover:text-green-300 border border-green-400/30 hover:border-green-400/60 px-2.5 py-1 rounded-lg transition-colors"
-                          >✓ Mark Paid</button>
-                        )}
-                        <button
-                          onClick={async () => {
-                            if (!confirm(`Delete application for ${a.studentName}? This cannot be undone.`)) return;
-                            await apiFetch(`/admissions/${a.id}`, { method: "DELETE" });
-                            load();
-                          }}
-                          className="text-xs text-red-400 hover:text-red-300 border border-red-400/30 hover:border-red-400/60 px-2.5 py-1 rounded-lg transition-colors"
-                        >🗑 Delete</button>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {/* Primary workflow action */}
+                          {a.status === "new" && (
+                            <button onClick={() => { setTrialModal({id:a.id,name:a.studentName,parentName:a.parentName}); setTrialDate(""); setTrialSlot("06:00 AM"); }}
+                              className="text-xs bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 rounded-lg px-3 py-1.5 hover:bg-yellow-400/20 font-semibold transition-colors">
+                              Schedule Trial →
+                            </button>
+                          )}
+                          {a.status === "trial_scheduled" && <>
+                            <button onClick={()=>updateStatus("admissions",a.id,"joined")}
+                              className="text-xs bg-green-400/10 border border-green-400/30 text-green-400 rounded-lg px-3 py-1.5 hover:bg-green-400/20 font-semibold transition-colors">
+                              Mark Joined ✓
+                            </button>
+                            <button onClick={() => { setTrialModal({id:a.id,name:a.studentName,parentName:a.parentName}); setTrialDate(""); setTrialSlot("06:00 AM"); }}
+                              className="text-xs border border-border text-muted-foreground rounded-lg px-3 py-1.5 hover:text-foreground transition-colors">
+                              Reschedule
+                            </button>
+                          </>}
+                          {a.status === "joined" && (
+                            enrolledIds.has(a.id)
+                              ? <span className="text-xs text-green-400 font-semibold">✅ Enrolled in system</span>
+                              : <button onClick={async () => { await enrollAsStudent(a); setEnrolledIds(prev => new Set(prev).add(a.id)); }}
+                                  className="text-xs bg-blue-400/10 border border-blue-400/30 text-blue-400 rounded-lg px-3 py-1.5 hover:bg-blue-400/20 font-semibold transition-colors">
+                                  👤 Enroll as Student
+                                </button>
+                          )}
+                          {a.status === "rejected" && (
+                            <button onClick={()=>updateStatus("admissions",a.id,"new")}
+                              className="text-xs border border-border text-muted-foreground rounded-lg px-3 py-1.5 hover:text-foreground transition-colors">
+                              ↩ Reconsider
+                            </button>
+                          )}
+
+                          {/* Secondary: payment + reject + delete */}
+                          {!isPaid && (
+                            <button onClick={() => { setMarkPaidAdm(a); setMarkPaidAmount(String(amountPaid)); setMarkPaidNote(""); }}
+                              className="text-xs border border-green-400/30 text-green-400 rounded-lg px-3 py-1.5 hover:bg-green-400/10 transition-colors">
+                              Mark Paid
+                            </button>
+                          )}
+                          {a.status === "new" && (
+                            <button onClick={()=>updateStatus("admissions",a.id,"rejected")}
+                              className="text-xs border border-border text-muted-foreground rounded-lg px-3 py-1.5 hover:text-red-400 hover:border-red-400/30 transition-colors">
+                              Reject
+                            </button>
+                          )}
+                          {a.status === "trial_scheduled" && (
+                            <button onClick={()=>updateStatus("admissions",a.id,"rejected")}
+                              className="text-xs border border-border text-muted-foreground rounded-lg px-3 py-1.5 hover:text-red-400 hover:border-red-400/30 transition-colors">
+                              Reject
+                            </button>
+                          )}
+                          {(a.status !== "joined" && a.status !== "trial_scheduled") && (
+                            <button
+                              onClick={async () => {
+                                const warn = isPaid ? `\n\n⚠️ ₹${amountPaid.toLocaleString()} was already collected. This only removes the record.` : "";
+                                if (!confirm(`Delete application for ${a.studentName}?${warn}\n\nThis cannot be undone.`)) return;
+                                await apiFetch(`/admissions/${a.id}`, { method: "DELETE" });
+                                load();
+                              }}
+                              className="text-xs border border-red-400/20 text-red-400/60 rounded-lg px-3 py-1.5 hover:text-red-400 hover:border-red-400/40 transition-colors">
+                              Delete
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             }
           </motion.div>
@@ -505,7 +644,10 @@ export default function Admin() {
         {/* Bookings */}
         {tab==="Bookings" && (
           <motion.div initial={{opacity:0}} animate={{opacity:1}}>
-            <div className="mb-6"><h2 className="font-display text-3xl font-bold">Bookings</h2><p className="text-muted-foreground">{bookings.length} total · ₹{bookings.filter(b=>b.status==="confirmed").reduce((s,b)=>s+b.total,0).toLocaleString()} revenue</p></div>
+            <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
+              <div><h2 className="font-display text-3xl font-bold">Bookings</h2><p className="text-muted-foreground">{bookings.length} total · ₹{bookings.filter(b=>b.status==="confirmed").reduce((s,b)=>s+b.total,0).toLocaleString()} revenue</p></div>
+              <button onClick={()=>setTab("__block__")} className="flex items-center gap-2 bg-red-500/10 border border-red-500/30 text-red-400 font-bold text-sm px-4 py-2.5 rounded-xl hover:bg-red-500/20 transition-colors">🚫 Block Bookings</button>
+            </div>
             {bookings.length===0 ? <p className="text-muted-foreground">No bookings yet.</p> :
               <div className="bg-card border border-border rounded-2xl overflow-hidden">
                 <div className="overflow-x-auto">
@@ -526,12 +668,43 @@ export default function Admin() {
                           <td className="p-4 font-bold text-secondary">₹{b.total.toLocaleString()}</td>
                           <td className="p-4"><StatusBadge s={b.status} /></td>
                           <td className="p-4">
-                            {b.status === "pending_payment" && (
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {b.status === "pending_payment" && (
+                                <button
+                                  onClick={() => { setMarkPaidBooking(b); setMarkPaidBookingNote(""); }}
+                                  className="text-xs bg-green-500/10 text-green-400 border border-green-500/30 rounded-lg px-3 py-1.5 hover:bg-green-500/20 transition-colors font-semibold"
+                                >✓ Mark Paid</button>
+                              )}
+                              {(b.status === "confirmed" || b.status === "pending_payment") && (
+                                <button
+                                  onClick={async () => {
+                                    if (!confirm(`Cancel booking ${b.ref} for ${b.name}?`)) return;
+                                    await apiFetch(`/bookings/${b.id}/status`, { method: "PATCH", body: JSON.stringify({ status: "cancelled" }) });
+                                    load();
+                                  }}
+                                  className="text-xs bg-red-500/10 text-red-400 border border-red-500/30 rounded-lg px-3 py-1.5 hover:bg-red-500/20 transition-colors font-semibold"
+                                >✕ Cancel</button>
+                              )}
+                              {b.status === "cancellation_requested" && (
+                                <button
+                                  onClick={async () => {
+                                    const note = prompt(`Process refund for ${b.name}?\nRefund amount: ₹${(b.refundAmount ?? Math.floor(b.total*0.9)).toLocaleString()} (10% deducted)\n\nEnter optional note (e.g. UPI ref, bank transfer ID):`);
+                                    if (note === null) return; // cancelled
+                                    await apiFetch(`/bookings/${b.id}/process-refund`, { method: "PATCH", body: JSON.stringify({ refundNote: note || undefined }) });
+                                    load();
+                                  }}
+                                  className="text-xs bg-orange-500/10 text-orange-400 border border-orange-500/30 rounded-lg px-3 py-1.5 hover:bg-orange-500/20 transition-colors font-semibold"
+                                >💸 Refund ₹{(b.refundAmount ?? Math.floor(b.total*0.9)).toLocaleString()}</button>
+                              )}
                               <button
-                                onClick={() => { setMarkPaidBooking(b); setMarkPaidBookingNote(""); }}
-                                className="text-xs bg-green-500/10 text-green-400 border border-green-500/30 rounded-lg px-3 py-1.5 hover:bg-green-500/20 transition-colors font-semibold"
-                              >✓ Mark Paid</button>
-                            )}
+                                onClick={async () => {
+                                  if (!confirm(`Permanently delete booking ${b.ref}? This cannot be undone.`)) return;
+                                  await apiFetch(`/bookings/${b.id}`, { method: "DELETE" });
+                                  load();
+                                }}
+                                className="text-xs text-muted-foreground border border-border rounded-lg px-3 py-1.5 hover:text-red-400 hover:border-red-500/30 transition-colors"
+                              >Delete</button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -578,10 +751,60 @@ export default function Admin() {
       )}
 
       {tab==="Fees"      && <FeesTab apiFetch={apiFetch} />}
-        {tab==="Coaches"   && <CoachesTab apiFetch={apiFetch} />}
-        {tab==="Discounts" && <DiscountsTab apiFetch={apiFetch} />}
+      {tab==="__block__" && <BlockBookingsPanel apiFetch={apiFetch} onBack={()=>setTab("Bookings")} />}
+      {tab==="Students"  && (
+        <motion.div initial={{opacity:0}} animate={{opacity:1}}>
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h2 className="font-display text-3xl font-bold">Students & QR Codes</h2>
+              <p className="text-muted-foreground">Enrolled students, batch assignment and QR attendance tokens</p>
+            </div>
+            <Link href="/admin/students" className="bg-secondary text-black font-bold px-4 py-2.5 rounded-xl text-sm hover:bg-secondary/90 transition-colors">Open Full View →</Link>
+          </div>
+          <div className="bg-card border border-border rounded-2xl p-8 text-center">
+            <p className="text-muted-foreground text-sm mb-4">Student records, QR code downloads and batch assignment are managed in the full Students view.</p>
+            <Link href="/admin/students" className="inline-flex items-center gap-2 bg-secondary text-black font-bold px-6 py-3 rounded-xl hover:bg-secondary/90 transition-colors">Open Students & QR →</Link>
+          </div>
+        </motion.div>
+      )}
+      {tab==="Coaches"   && <CoachesTab apiFetch={apiFetch} />}
+      {tab==="Discounts" && <DiscountsTab apiFetch={apiFetch} />}
+      {tab==="Broadcast" && <BroadcastTab apiFetch={apiFetch} senderName="Admin" />}
 
       </div>
+
+      {/* Trial Scheduling Modal */}
+      {trialModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4" onClick={() => setTrialModal(null)}>
+          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+            <h3 className="font-bold text-lg mb-1">Schedule Trial Session</h3>
+            <p className="text-muted-foreground text-sm mb-4">{trialModal.name} — Parent: {trialModal.parentName}</p>
+            <p className="text-xs text-muted-foreground mb-1 font-semibold uppercase tracking-wider">Trial Date *</p>
+            <input type="date" value={trialDate} onChange={e=>setTrialDate(e.target.value)} min={new Date().toISOString().split("T")[0]}
+              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground mb-3 focus:outline-none focus:border-secondary" />
+            <p className="text-xs text-muted-foreground mb-1 font-semibold uppercase tracking-wider">Time Slot</p>
+            <select value={trialSlot} onChange={e=>setTrialSlot(e.target.value)}
+              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground mb-4 focus:outline-none focus:border-secondary">
+              {["06:00 AM","07:00 AM","08:00 AM","04:00 PM","05:00 PM","06:00 PM"].map(s=><option key={s} value={s}>{s}</option>)}
+            </select>
+            <p className="text-xs text-muted-foreground mb-4">Customer will receive an email + WhatsApp with the trial date and time.</p>
+            <div className="flex gap-3">
+              <button
+                disabled={!trialDate}
+                onClick={async () => {
+                  await apiFetch(`/admissions/${trialModal.id}/status`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ status: "trial_scheduled", trialDate, trialSlot }),
+                  });
+                  setTrialModal(null); load();
+                }}
+                className="flex-1 bg-yellow-500 text-black font-bold py-2.5 rounded-xl hover:bg-yellow-400 transition-colors text-sm disabled:opacity-40"
+              >Confirm & Notify Customer</button>
+              <button onClick={() => setTrialModal(null)} className="flex-1 border border-border rounded-xl py-2.5 text-sm font-semibold hover:bg-muted/30 transition-colors">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Mark Paid Modal */}
       {markPaidAdm && (
@@ -614,10 +837,14 @@ export default function Admin() {
               <button
                 onClick={async () => {
                   if (!markPaidAmount) return;
-                  await apiFetch(`/admissions/${markPaidAdm.id}/mark-paid`, {
+                  const adm = markPaidAdm!;
+                  await apiFetch(`/admissions/${adm.id}/mark-paid`, {
                     method: "PATCH",
                     body: JSON.stringify({ amount: parseInt(markPaidAmount), note: markPaidNote || undefined }),
                   });
+                  // Also advance status to joined and enroll as student
+                  await apiFetch(`/admissions/${adm.id}/status`, { method: "PATCH", body: JSON.stringify({ status: "joined" }) });
+                  await enrollAsStudent({ ...adm, totalPaid: parseInt(markPaidAmount) });
                   setMarkPaidAdm(null);
                   load();
                 }}
@@ -629,6 +856,147 @@ export default function Admin() {
         </div>
       )}
     </div>
+  );
+}
+
+// ── Block Bookings Panel ──────────────────────────────────────────────────────
+const BLOCK_FACILITIES = [
+  { id: "all",     label: "All Facilities" },
+  { id: "box",     label: "Box Cricket Arena" },
+  { id: "turf",    label: "Turf Wicket" },
+  { id: "cement",  label: "Astro Turf / Cemented" },
+  { id: "bowling", label: "Bowling Machine Bay" },
+];
+const BLOCK_SLOTS = ["06:00 AM","07:00 AM","08:00 AM","09:00 AM","10:00 AM","11:00 AM","12:00 PM","01:00 PM","02:00 PM","03:00 PM","04:00 PM","05:00 PM","06:00 PM","07:00 PM","08:00 PM","09:00 PM"];
+
+function BlockBookingsPanel({ apiFetch, onBack }: { apiFetch: (path: string, opts?: RequestInit) => Promise<Response>; onBack: () => void }) {
+  const [blocks, setBlocks] = useState<any[]>([]);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [facility, setFacility] = useState("all");
+  const [slot, setSlot] = useState("");
+  const [reason, setReason] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  const load = () => apiFetch("/blocked-slots").then(r => r.json()).then(d => setBlocks(Array.isArray(d) ? d : []));
+  useEffect(() => { load(); }, []);
+
+  // Returns all YYYY-MM-DD strings from dateFrom to dateTo inclusive
+  const dateRange = (from: string, to: string): string[] => {
+    const dates: string[] = [];
+    const cur = new Date(from);
+    const end = new Date(to);
+    while (cur <= end) {
+      dates.push(cur.toISOString().split("T")[0]);
+      cur.setDate(cur.getDate() + 1);
+    }
+    return dates;
+  };
+
+  const save = async () => {
+    if (!dateFrom || !reason.trim()) { setError("Start date and reason are required."); return; }
+    const effectiveTo = dateTo && dateTo >= dateFrom ? dateTo : dateFrom;
+    const dates = dateRange(dateFrom, effectiveTo);
+    setSaving(true); setError("");
+    try {
+      for (const d of dates) {
+        const res = await apiFetch("/blocked-slots", {
+          method: "POST",
+          body: JSON.stringify({ date: d, facility, slot: slot || null, reason }),
+        });
+        if (!res.ok) { const body = await res.json(); throw new Error(body.error || "Failed"); }
+      }
+      setDateFrom(""); setDateTo(""); setFacility("all"); setSlot(""); setReason("");
+      load();
+    } catch (e: any) { setError(e.message); }
+    finally { setSaving(false); }
+  };
+
+  const remove = async (id: number) => {
+    if (!confirm("Remove this block? Bookings for this slot will become available again.")) return;
+    await apiFetch(`/blocked-slots/${id}`, { method: "DELETE" });
+    load();
+  };
+
+  return (
+    <motion.div initial={{opacity:0}} animate={{opacity:1}}>
+      <div className="mb-6 flex items-center gap-3">
+        <button onClick={onBack} className="text-muted-foreground hover:text-foreground text-sm flex items-center gap-1 border border-border rounded-lg px-3 py-1.5">← Back to Bookings</button>
+        <div>
+          <h2 className="font-display text-3xl font-bold">Block Bookings</h2>
+          <p className="text-muted-foreground text-sm">Blocked dates/slots cannot be booked by customers</p>
+        </div>
+      </div>
+
+      {/* Add block form */}
+      <div className="bg-card border border-border rounded-2xl p-6 mb-6">
+        <h3 className="font-bold text-lg mb-4">Add New Block</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">From Date *</label>
+            <input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); if (!dateTo || dateTo < e.target.value) setDateTo(e.target.value); }}
+              className="w-full bg-background border border-border rounded-lg px-3 py-2.5 text-foreground text-sm focus:outline-none focus:border-red-400" />
+          </div>
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">To Date <span className="normal-case font-normal text-muted-foreground">(leave same for single day)</span></label>
+            <input type="date" value={dateTo} min={dateFrom} onChange={e => setDateTo(e.target.value)}
+              className="w-full bg-background border border-border rounded-lg px-3 py-2.5 text-foreground text-sm focus:outline-none focus:border-red-400" />
+          </div>
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">Facility</label>
+            <select value={facility} onChange={e => setFacility(e.target.value)}
+              className="w-full bg-background border border-border rounded-lg px-3 py-2.5 text-foreground text-sm focus:outline-none focus:border-red-400">
+              {BLOCK_FACILITIES.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">Specific Slot <span className="normal-case font-normal text-muted-foreground">(leave blank = entire day)</span></label>
+            <select value={slot} onChange={e => setSlot(e.target.value)}
+              className="w-full bg-background border border-border rounded-lg px-3 py-2.5 text-foreground text-sm focus:outline-none focus:border-red-400">
+              <option value="">— Entire Day —</option>
+              {BLOCK_SLOTS.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div className="sm:col-span-2">
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">Reason *</label>
+            <input value={reason} onChange={e => setReason(e.target.value)} placeholder="e.g. Academy event, Ground maintenance, Tournament…"
+              className="w-full bg-background border border-border rounded-lg px-3 py-2.5 text-foreground text-sm focus:outline-none focus:border-red-400" />
+          </div>
+        </div>
+        {dateFrom && dateTo && dateTo > dateFrom && (
+          <p className="text-yellow-400 text-xs mb-3">
+            ⚠️ This will block {Math.round((new Date(dateTo).getTime() - new Date(dateFrom).getTime()) / 86400000) + 1} days ({dateFrom} → {dateTo})
+          </p>
+        )}
+        {error && <p className="text-red-400 text-xs mb-3">{error}</p>}
+        <button onClick={save} disabled={saving} className="bg-red-500 text-white font-bold px-5 py-2.5 rounded-xl text-sm hover:bg-red-400 transition-colors disabled:opacity-50">
+          {saving ? "Saving…" : "🚫 Block Date(s)"}
+        </button>
+      </div>
+
+      {/* Existing blocks */}
+      <h3 className="font-bold text-base mb-3">Active Blocks ({blocks.length})</h3>
+      {blocks.length === 0
+        ? <p className="text-muted-foreground text-sm">No blocks set. All slots are open for booking.</p>
+        : <div className="space-y-2">
+            {blocks.map(b => (
+              <div key={b.id} className="bg-card border border-red-500/20 rounded-xl px-4 py-3 flex items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-foreground text-sm">{b.date}</span>
+                    <span className="text-xs bg-red-500/10 text-red-400 px-2 py-0.5 rounded-full font-bold">{BLOCK_FACILITIES.find(f=>f.id===b.facility)?.label || b.facility}</span>
+                    {b.slot && <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">{b.slot}</span>}
+                    {!b.slot && <span className="text-xs bg-orange-500/10 text-orange-400 px-2 py-0.5 rounded-full">Full Day</span>}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">{b.reason}</p>
+                </div>
+                <button onClick={() => remove(b.id)} className="text-xs text-red-400 hover:text-red-300 border border-red-400/30 px-2.5 py-1 rounded-lg shrink-0">Remove</button>
+              </div>
+            ))}
+          </div>
+      }
+    </motion.div>
   );
 }
 
@@ -922,8 +1290,8 @@ function CoachesTab({ apiFetch }: { apiFetch: (path: string, opts?: RequestInit)
 
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="font-display text-3xl font-bold">Staff & Student Accounts</h2>
-          <p className="text-muted-foreground">Manage login credentials — passwords visible to admin only</p>
+          <h2 className="font-display text-3xl font-bold">Staff Login Accounts</h2>
+          <p className="text-muted-foreground">Coach & reception login credentials — passwords visible to admin only</p>
         </div>
         <button onClick={() => setShowForm(v => !v)} className="bg-secondary text-secondary-foreground font-bold px-4 py-2.5 rounded-xl text-sm hover:bg-secondary/90">+ Add Account</button>
       </div>
@@ -1012,6 +1380,7 @@ function CoachesTab({ apiFetch }: { apiFetch: (path: string, opts?: RequestInit)
 // ── Discounts Tab ─────────────────────────────────────────────────────────────
 interface DiscountType { id:number; name:string; percentage:number; description:string; requiredDocument:string; isActive:boolean; }
 interface DiscountApp  { id:number; studentId:number; discountTypeId:number; documentUrl?:string; documentName?:string; status:string; reviewedBy?:string; reviewNotes?:string; createdAt:string; }
+interface FeePackage   { id:number; months:number; label:string; discountPct:number; isActive:boolean; sortOrder:number; }
 
 function DiscountsTab({ apiFetch }: { apiFetch: (p:string, o?:RequestInit)=>Promise<Response> }) {
   const [types, setTypes]   = useState<DiscountType[]>([]);
@@ -1019,13 +1388,20 @@ function DiscountsTab({ apiFetch }: { apiFetch: (p:string, o?:RequestInit)=>Prom
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing]   = useState<DiscountType|null>(null);
   const [form, setForm] = useState({ name:"", percentage:10, description:"", requiredDocument:"", isActive:true });
+  // Fee packages state
+  const [pkgs, setPkgs] = useState<FeePackage[]>([]);
+  const [showPkgForm, setShowPkgForm] = useState(false);
+  const [editingPkg, setEditingPkg] = useState<FeePackage|null>(null);
+  const [pkgForm, setPkgForm] = useState({ months:3, label:"3-Month Pack", discountPct:10, isActive:true });
+  const [pkgSaving, setPkgSaving] = useState(false);
   const [saving, setSaving] = useState(false);
   const [reviewing, setReviewing] = useState<number|null>(null);
 
   const load = useCallback(async () => {
-    const [tRes, aRes] = await Promise.all([apiFetch("/discount-types"), apiFetch("/discount-applications")]);
-    if (tRes.ok) setTypes(await tRes.json());
+    const [tRes, aRes, pRes] = await Promise.all([apiFetch("/discount-types"), apiFetch("/discount-applications"), apiFetch("/fee-packages")]);
+    if (tRes.ok) { const d = await tRes.json(); setTypes(Array.isArray(d) ? d : (d.discounts ?? [])); }
     if (aRes.ok) setApps(await aRes.json());
+    if (pRes.ok) setPkgs(await pRes.json());
   }, [apiFetch]);
 
   useEffect(() => { load(); }, [load]);
@@ -1050,6 +1426,28 @@ function DiscountsTab({ apiFetch }: { apiFetch: (p:string, o?:RequestInit)=>Prom
 
   const toggleActive = async (t: DiscountType) => {
     await apiFetch(`/discount-types/${t.id}`, { method:"PATCH", body:JSON.stringify({ isActive: !t.isActive }) }); load();
+  };
+
+  const savePkg = async (e: React.FormEvent) => {
+    e.preventDefault(); setPkgSaving(true);
+    try {
+      if (editingPkg) {
+        await apiFetch(`/fee-packages/${editingPkg.id}`, { method:"PATCH", body:JSON.stringify(pkgForm) });
+      } else {
+        await apiFetch("/fee-packages", { method:"POST", body:JSON.stringify(pkgForm) });
+      }
+      setShowPkgForm(false); setEditingPkg(null); setPkgForm({ months:3, label:"3-Month Pack", discountPct:10, isActive:true });
+      load();
+    } finally { setPkgSaving(false); }
+  };
+
+  const deletePkg = async (id: number) => {
+    if (!confirm("Delete this package?")) return;
+    await apiFetch(`/fee-packages/${id}`, { method:"DELETE" }); load();
+  };
+
+  const togglePkg = async (p: FeePackage) => {
+    await apiFetch(`/fee-packages/${p.id}`, { method:"PATCH", body:JSON.stringify({ isActive: !p.isActive }) }); load();
   };
 
   const review = async (id: number, status: "approved"|"rejected", notes="") => {
@@ -1180,6 +1578,82 @@ function DiscountsTab({ apiFetch }: { apiFetch: (p:string, o?:RequestInit)=>Prom
           )}
         </div>
 
+        {/* ── Fee Packages ── */}
+        <div className="mt-10 pt-8 border-t border-border">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-display text-xl font-bold flex items-center gap-2">
+              <Tag className="h-5 w-5 text-secondary"/> Fee Packages
+            </h3>
+            <button onClick={()=>{ setShowPkgForm(true); setEditingPkg(null); setPkgForm({ months:3, label:"3-Month Pack", discountPct:10, isActive:true }); }}
+              className="flex items-center gap-1.5 bg-secondary text-secondary-foreground text-xs font-bold px-3 py-2 rounded-lg hover:bg-secondary/90">
+              <Plus className="h-3.5 w-3.5"/> Add Package
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground mb-4">These are the duration packages shown in the admission form. Changing percentages here immediately affects new admissions.</p>
+
+          {showPkgForm && (
+            <motion.div initial={{opacity:0,y:-10}} animate={{opacity:1,y:0}} className="bg-card border border-secondary/30 rounded-xl p-6 mb-6">
+              <h4 className="font-bold mb-4">{editingPkg ? "Edit Package" : "New Package"}</h4>
+              <form onSubmit={savePkg} className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1">Label</label>
+                  <input value={pkgForm.label} onChange={e=>setPkgForm(f=>({...f,label:e.target.value}))} className={inputCls} placeholder="e.g. 6-Month Pack" required/>
+                </div>
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1">Months</label>
+                  <input type="number" min={1} max={24} value={pkgForm.months} onChange={e=>setPkgForm(f=>({...f,months:parseInt(e.target.value)}))} className={inputCls} required/>
+                </div>
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1">Discount % (on monthly fee)</label>
+                  <input type="number" min={0} max={100} value={pkgForm.discountPct} onChange={e=>setPkgForm(f=>({...f,discountPct:parseInt(e.target.value)}))} className={inputCls} required/>
+                </div>
+                <div className="flex items-end pb-0.5">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input type="checkbox" checked={pkgForm.isActive} onChange={e=>setPkgForm(f=>({...f,isActive:e.target.checked}))} className="rounded"/>
+                    <span className="text-sm font-medium">Active (visible in admission form)</span>
+                  </label>
+                </div>
+                <div className="sm:col-span-2 flex gap-3">
+                  <button type="submit" disabled={pkgSaving} className="bg-secondary text-secondary-foreground text-sm font-bold px-5 py-2.5 rounded-xl hover:bg-secondary/90 disabled:opacity-60">{pkgSaving?"Saving…":"Save"}</button>
+                  <button type="button" onClick={()=>{setShowPkgForm(false);setEditingPkg(null);}} className="text-sm text-muted-foreground hover:text-foreground px-4 py-2.5">Cancel</button>
+                </div>
+              </form>
+            </motion.div>
+          )}
+
+          <div className="space-y-3">
+            {pkgs.map(p => (
+              <div key={p.id} className={`bg-card border rounded-xl p-5 flex flex-col sm:flex-row sm:items-center gap-4 ${p.isActive?"border-border":"border-border/40 opacity-60"}`}>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-bold">{p.label}</p>
+                    <span className="bg-secondary/10 text-secondary text-xs font-bold px-2 py-0.5 rounded-full">{p.discountPct}% off monthly</span>
+                    <span className="text-xs text-muted-foreground">{p.months} month{p.months>1?"s":""}</span>
+                    {!p.isActive && <span className="bg-muted text-muted-foreground text-xs px-2 py-0.5 rounded-full">Inactive</span>}
+                  </div>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <button onClick={()=>togglePkg(p)} className={`text-xs font-bold px-2.5 py-1.5 rounded-lg border ${p.isActive?"border-green-400/30 text-green-400 hover:bg-green-400/10":"border-muted text-muted-foreground hover:bg-muted"}`}>{p.isActive?"Active":"Inactive"}</button>
+                  <button onClick={()=>{ setEditingPkg(p); setPkgForm({ months:p.months, label:p.label, discountPct:p.discountPct, isActive:p.isActive }); setShowPkgForm(true); }}
+                    className="text-xs font-bold px-2.5 py-1.5 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:border-secondary/40">
+                    <Pencil className="h-3 w-3"/>
+                  </button>
+                  <button onClick={()=>deletePkg(p.id)} className="text-xs font-bold px-2.5 py-1.5 rounded-lg border border-border text-red-400/70 hover:text-red-400 hover:border-red-400/30">
+                    <Trash2 className="h-3 w-3"/>
+                  </button>
+                </div>
+              </div>
+            ))}
+            {pkgs.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                <Tag className="h-8 w-8 mx-auto mb-2 opacity-30"/>
+                <p className="text-sm">No packages yet. Add your first one above.</p>
+                <p className="text-xs mt-1">Until packages are added, the admission form falls back to the built-in 3/6/12-month defaults.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Reviewed applications */}
         {apps.filter(a=>a.status!=="pending").length > 0 && (
           <div className="mt-8">
@@ -1195,6 +1669,136 @@ function DiscountsTab({ apiFetch }: { apiFetch: (p:string, o?:RequestInit)=>Prom
                 </div>
               ))}
             </div>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+// ── Broadcast Tab (shared between admin and reception portals) ─────────────────
+interface BroadcastMsg { id: number; title: string; message: string; audience: string; createdBy: string; createdAt: string; }
+
+export function BroadcastTab({ apiFetch, senderName }: { apiFetch: (p: string, o?: RequestInit) => Promise<Response>; senderName: string }) {
+  const [msgs, setMsgs]       = useState<BroadcastMsg[]>([]);
+  const [title, setTitle]     = useState("");
+  const [body, setBody]       = useState("");
+  const [audience, setAudience] = useState("all");
+  const [sending, setSending] = useState(false);
+  const [sent, setSent]       = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const r = await apiFetch("/notifications");
+    if (r.ok) setMsgs(await r.json());
+    setLoading(false);
+  }, [apiFetch]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const send = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim() || !body.trim()) return;
+    setSending(true);
+    const r = await apiFetch("/notifications", {
+      method: "POST",
+      body: JSON.stringify({ title: title.trim(), message: body.trim(), audience, createdBy: senderName }),
+    });
+    if (r.ok) {
+      setTitle(""); setBody(""); setAudience("all");
+      setSent(true); setTimeout(() => setSent(false), 3000);
+      load();
+    }
+    setSending(false);
+  };
+
+  const del = async (id: number) => {
+    if (!confirm("Delete this broadcast?")) return;
+    await apiFetch(`/notifications/${id}`, { method: "DELETE" });
+    load();
+  };
+
+  const inp = "w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-secondary";
+
+  return (
+    <motion.div initial={{opacity:0}} animate={{opacity:1}} className="space-y-8">
+      <div>
+        <h2 className="font-display text-2xl font-bold flex items-center gap-2 mb-1">
+          <Megaphone className="h-6 w-6 text-secondary"/> Broadcast Message
+        </h2>
+        <p className="text-muted-foreground text-sm">Send announcements to all students — practice schedule changes, events, holidays, and more. Messages appear in the parent/student portal.</p>
+      </div>
+
+      {/* Compose */}
+      <div className="bg-card border border-secondary/30 rounded-2xl p-6">
+        <h3 className="font-bold mb-4 flex items-center gap-2"><Send className="h-4 w-4 text-secondary"/> New Message</h3>
+        <form onSubmit={send} className="space-y-4">
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">Title / Subject *</label>
+            <input value={title} onChange={e => setTitle(e.target.value)} className={inp} placeholder="e.g. Practice Cancelled — 28 Aug" required maxLength={120}/>
+          </div>
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">Message *</label>
+            <textarea value={body} onChange={e => setBody(e.target.value)} className={inp + " resize-none"} rows={4}
+              placeholder="Write your message here. Be clear and include any action required from parents/students." required maxLength={1000}/>
+            <p className="text-xs text-muted-foreground mt-1 text-right">{body.length}/1000</p>
+          </div>
+          <div>
+            <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">Audience</label>
+            <select value={audience} onChange={e => setAudience(e.target.value)} className={inp}>
+              <option value="all">All Students & Parents</option>
+              <option value="u8">U8 (Under 8)</option>
+              <option value="u12">U12 (Under 12)</option>
+              <option value="u16">U16 (Under 16)</option>
+              <option value="u19">U19 (Under 19)</option>
+              <option value="elite">Elite</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-3">
+            <button type="submit" disabled={sending || !title.trim() || !body.trim()}
+              className="flex items-center gap-2 bg-secondary text-secondary-foreground font-bold px-6 py-2.5 rounded-xl hover:bg-secondary/90 disabled:opacity-50 transition-colors">
+              <Send className="h-4 w-4"/> {sending ? "Sending…" : "Send Broadcast"}
+            </button>
+            {sent && <span className="text-green-400 text-sm font-semibold">✓ Sent successfully</span>}
+          </div>
+        </form>
+      </div>
+
+      {/* History */}
+      <div>
+        <h3 className="font-bold text-lg mb-4">Broadcast History</h3>
+        {loading ? (
+          <div className="text-center py-8 text-muted-foreground">Loading…</div>
+        ) : msgs.length === 0 ? (
+          <div className="text-center py-12 bg-card border border-border rounded-2xl text-muted-foreground">
+            <Megaphone className="h-10 w-10 mx-auto mb-3 opacity-30"/>
+            <p>No broadcasts sent yet.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {msgs.map(m => (
+              <div key={m.id} className="bg-card border border-border rounded-xl p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <p className="font-bold">{m.title}</p>
+                      {m.audience !== "all" && (
+                        <span className="text-xs bg-secondary/10 text-secondary px-2 py-0.5 rounded-full font-bold uppercase">{m.audience}</span>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">{m.message}</p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Sent by <span className="text-foreground font-medium">{m.createdBy}</span> · {new Date(m.createdAt).toLocaleString("en-IN", { dateStyle:"medium", timeStyle:"short" })}
+                    </p>
+                  </div>
+                  <button onClick={() => del(m.id)}
+                    className="shrink-0 text-red-400/60 hover:text-red-400 border border-transparent hover:border-red-400/30 rounded-lg p-1.5 transition-colors">
+                    <Trash2 className="h-3.5 w-3.5"/>
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

@@ -21,11 +21,7 @@ function loadRazorpayScript(): Promise<boolean> {
 const AGES  = ["U8 (Under 8)","U12 (Under 12)","U16 (Under 16)","U19 (Under 19)","Elite","Not sure — need assessment"];
 const BLOOD = ["A+","A-","B+","B-","O+","O-","AB+","AB-","Unknown"];
 
-const PACKAGES = [
-  { months: 3,  label: "3-Month Pack",  pkgDiscount: 10 },
-  { months: 6,  label: "6-Month Pack",  pkgDiscount: 15 },
-  { months: 12, label: "12-Month Pack", pkgDiscount: 20 },
-];
+interface FeePackage { id: number; months: number; label: string; discountPct: number; isActive: boolean; }
 const REG_FEE    = 5000;
 const KIT_FEE    = 2000;
 const MONTHLY_FEE = 3500;
@@ -37,7 +33,7 @@ const STEPS = ["Student Details","Parent & Medical","Consent","Discount (Optiona
 export default function Admissions() {
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
-    studentName:"", dob:"", ageGroup:"", school:"",
+    studentName:"", dob:"", ageGroup:"", school:"", dressSize:"",
     parentName:"", phone:"", email:"", address:"",
     bloodGroup:"", allergies:"", asthma:false, medicalNotes:"",
     emergencyName:"", emergencyPhone:"",
@@ -47,6 +43,7 @@ export default function Admissions() {
 
   // Discount state
   const [discountTypes, setDiscountTypes]       = useState<DiscountType[]>([]);
+  const [isPreOpeningEligible, setIsPreOpeningEligible] = useState(false);
   const [selectedDiscount, setSelectedDiscount] = useState<DiscountType|null>(null);
   const [docFile, setDocFile]                   = useState<File|null>(null);
   const [docPreview, setDocPreview]             = useState<string>("");
@@ -54,6 +51,7 @@ export default function Admissions() {
   const [skipDiscount, setSkipDiscount]         = useState(false);
 
   const [selectedPackage, setSelectedPackage] = useState<number|null>(null); // null = reg only
+  const [feePackages, setFeePackages] = useState<FeePackage[]>([]);
 
   const [done, setDone]           = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -64,7 +62,7 @@ export default function Admissions() {
   const f = (k: string, v: any) => { setForm(p => ({...p,[k]:v})); setErrors(e => ({...e,[k]:""})); }
   const allConsents = form.consentMedical && form.consentPhoto && form.consentLiability && form.consentTerms && form.consentData;
 
-  const validPhone = (v: string) => /^\d{10}$/.test(v.replace(/\D/g,"").replace(/^91/,""));
+  const validPhone = (v: string) => { const d = v.replace(/\D/g,""); const n = d.length === 12 && d.startsWith("91") ? d.slice(2) : d; return /^\d{10}$/.test(n); };
   const validDob = (v: string) => {
     if (!v) return "Date of birth is required";
     const d = new Date(v), now = new Date();
@@ -80,6 +78,7 @@ export default function Admissions() {
     if (!form.studentName.trim()) e.studentName = "Student name is required";
     const dobErr = validDob(form.dob); if (dobErr) e.dob = dobErr;
     if (!form.ageGroup) e.ageGroup = "Please select an age group";
+    if (!form.dressSize) e.dressSize = "Dress size is required for kit allocation";
     if (!form.address.trim()) e.address = "Address is required";
     setErrors(e); return Object.keys(e).length === 0;
   };
@@ -98,27 +97,29 @@ export default function Admissions() {
 
   // Package & discount calculations
   const eligPct = selectedDiscount && eligConfirmed && !skipDiscount ? selectedDiscount.percentage : 0;
-  const pkgPct  = PACKAGES.find(p => p.months === selectedPackage)?.pkgDiscount ?? 0;
+  const pkgPct  = feePackages.find(p => p.months === selectedPackage)?.discountPct ?? 0;
   const combinedPct  = Math.min(eligPct + pkgPct, 90);
   const monthlyTotal = selectedPackage ? Math.round(selectedPackage * MONTHLY_FEE * (1 - combinedPct / 100)) : 0;
   const kitFee  = selectedPackage ? KIT_FEE : 0;
   const totalDue = REG_FEE + kitFee + monthlyTotal;
 
-  const PRE_OPENING_DEADLINE = new Date("2026-08-20");
-  const isPreOpeningEligible = new Date() < PRE_OPENING_DEADLINE;
-
   useEffect(() => {
     fetch("/api/discount-types")
       .then(r => r.json())
-      .then((data: DiscountType[]) => {
-        const active = data.filter(d => d.isActive);
+      .then((data: { discounts: DiscountType[]; preOpeningActive: boolean }) => {
+        const active = (data.discounts ?? []).filter(d => d.isActive);
         setDiscountTypes(active);
-        // Auto-apply pre-opening discount for admissions before 20 Aug 2026
-        if (isPreOpeningEligible) {
-          const preOpening = active.find(d => d.id === 4);
+        // Server tells us if the pre-opening window is still open — no client-side date logic
+        if (data.preOpeningActive) {
+          setIsPreOpeningEligible(true);
+          const preOpening = active.find(d => d.id === 4 || d.name.toLowerCase().includes("pre-opening") || d.name.toLowerCase().includes("founding batch"));
           if (preOpening) { setSelectedDiscount(preOpening); setEligConfirmed(true); setSkipDiscount(false); }
         }
       })
+      .catch(() => {});
+    fetch("/api/fee-packages")
+      .then(r => r.json())
+      .then((pkgs: FeePackage[]) => setFeePackages((pkgs ?? []).filter(p => p.isActive)))
       .catch(() => {});
     loadRazorpayScript().catch(() => {});
   }, []);
@@ -143,7 +144,8 @@ export default function Admissions() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           studentName: form.studentName, dob: form.dob, ageGroup: form.ageGroup,
-          school: form.school || undefined, parentName: form.parentName,
+          school: form.school || undefined, dressSize: form.dressSize || undefined,
+          parentName: form.parentName,
           phone: form.phone, email: form.email, address: form.address || undefined,
           bloodGroup: form.bloodGroup || undefined, allergies: form.allergies || undefined,
           asthma: form.asthma, medicalNotes: form.medicalNotes || undefined,
@@ -192,7 +194,8 @@ export default function Admissions() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           studentName: form.studentName, dob: form.dob, ageGroup: form.ageGroup,
-          school: form.school || undefined, parentName: form.parentName,
+          school: form.school || undefined, dressSize: form.dressSize || undefined,
+          parentName: form.parentName,
           phone: form.phone, email: form.email, address: form.address || undefined,
           bloodGroup: form.bloodGroup || undefined, allergies: form.allergies || undefined,
           asthma: form.asthma, medicalNotes: form.medicalNotes || undefined,
@@ -310,8 +313,14 @@ export default function Admissions() {
       <div className="pt-28 pb-10 bg-gradient-to-b from-secondary/5 to-background">
         <div className="container mx-auto px-4 text-center">
           <h1 className="font-display text-4xl md:text-5xl font-bold mb-3">Admissions 2026</h1>
-          <p className="text-muted-foreground text-lg">Founding Batch — Early Admissions Open</p>
-          <div className="flex justify-center gap-2 mt-6 flex-wrap">
+          <p className="text-muted-foreground text-lg">2026 Season — Admissions Now Open</p>
+          <div className="flex justify-center gap-3 mt-5 flex-wrap">
+            <a href="/admission-form" target="_blank" rel="noreferrer"
+              className="inline-flex items-center gap-2 bg-card border border-border rounded-xl px-4 py-2 text-sm font-semibold text-muted-foreground hover:text-foreground hover:border-secondary/40 transition-colors">
+              🖨️ Download / Print Offline Form
+            </a>
+          </div>
+          <div className="flex justify-center gap-2 mt-4 flex-wrap">
             {STEPS.map((s,i) => (
               <div key={s} className={`px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${step>=i+1 ? "bg-secondary text-secondary-foreground" : "bg-card border border-border text-muted-foreground"}`}>{s}</div>
             ))}
@@ -349,6 +358,33 @@ export default function Admissions() {
                 </div>
                 <div><label className="label">School / College</label><input value={form.school} onChange={e=>f("school",e.target.value)} className="inp" placeholder="St. Xavier's School"/></div>
               </div>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="label">Dress Size * <span className="normal-case font-normal text-muted-foreground">(for ₹2,000 academy kit)</span></label>
+                  <select value={form.dressSize} onChange={e=>f("dressSize",e.target.value)} className={`inp ${errors.dressSize?"inp-err":""}`}>
+                    <option value="">Select size</option>
+                    <optgroup label="Kids (Age 5–10)">
+                      <option value="20">Size 20 (Age 5–6)</option>
+                      <option value="22">Size 22 (Age 7–8)</option>
+                      <option value="24">Size 24 (Age 9–10)</option>
+                    </optgroup>
+                    <optgroup label="Junior (Age 11–14)">
+                      <option value="26">Size 26 (Age 11–12)</option>
+                      <option value="28">Size 28 (Age 13–14)</option>
+                    </optgroup>
+                    <optgroup label="Youth / Adult">
+                      <option value="30">Size 30 / XS Adult</option>
+                      <option value="32">Size 32 / S Adult</option>
+                      <option value="34">Size 34 / M Adult</option>
+                      <option value="36">Size 36 / L Adult</option>
+                      <option value="38">Size 38 / XL Adult</option>
+                      <option value="40">Size 40 / XXL Adult</option>
+                      <option value="42">Size 42 / XXXL Adult</option>
+                    </optgroup>
+                  </select>
+                  {errors.dressSize && <p className="text-red-400 text-xs mt-1">{errors.dressSize}</p>}
+                </div>
+              </div>
               <div>
                 <label className="label">Student Address *</label>
                 <input value={form.address} onChange={e=>f("address",e.target.value)} className={`inp ${errors.address?"inp-err":""}`} placeholder="House No, Street, Area, Patna, Bihar"/>
@@ -361,7 +397,7 @@ export default function Admissions() {
               {form.isTrial && <div><label className="label">Preferred Trial Date</label><input type="date" value={form.trialDate} onChange={e=>f("trialDate",e.target.value)} className="inp"/></div>}
             </div>
             <button type="button" onClick={()=>{ if(validateStep1()) setStep(2); }}
-              disabled={!form.studentName.trim() || !form.dob || !form.ageGroup || !form.address.trim()}
+              disabled={!form.studentName.trim() || !form.dob || !form.ageGroup || !form.dressSize || !form.address.trim()}
               className="w-full bg-secondary text-secondary-foreground font-bold uppercase py-4 rounded-xl hover:bg-secondary/90 transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
               Continue <ArrowRight className="h-5 w-5"/>
             </button>
@@ -480,7 +516,7 @@ export default function Admissions() {
                 <div className="flex-1">
                   <p className="font-bold text-secondary text-sm uppercase tracking-wide mb-1">Pre-Opening Discount — Auto-Applied ✓</p>
                   <p className="text-foreground font-medium">25% off monthly tuition fee has been automatically applied to your admission.</p>
-                  <p className="text-muted-foreground text-xs mt-1.5">You are registering before 20 August 2026 (Founding Batch deadline). No document is required — this discount is verified by date of application.</p>
+                  <p className="text-muted-foreground text-xs mt-1.5">This discount has been automatically applied. No document is required — eligibility is verified by the academy.</p>
                 </div>
               </motion.div>
             )}
@@ -662,8 +698,8 @@ export default function Admissions() {
               </div>
 
               {/* Package cards */}
-              {PACKAGES.map(pkg => {
-                const combined = Math.min(eligPct + pkg.pkgDiscount, 90);
+              {feePackages.map(pkg => {
+                const combined = Math.min(eligPct + pkg.discountPct, 90);
                 const monthly  = Math.round(pkg.months * MONTHLY_FEE * (1 - combined / 100));
                 const total    = REG_FEE + KIT_FEE + monthly;
                 const saving   = pkg.months * MONTHLY_FEE - monthly;
@@ -674,7 +710,7 @@ export default function Admissions() {
                       <div>
                         <span className="font-semibold text-sm">{pkg.label}</span>
                         <span className="ml-2 text-xs bg-secondary/15 text-secondary px-2 py-0.5 rounded-full font-bold">
-                          {pkg.pkgDiscount}% off monthly{eligPct > 0 ? ` + ${eligPct}% eligibility = ${combined}% combined` : ""}
+                          {pkg.discountPct}% off monthly{eligPct > 0 ? ` + ${eligPct}% eligibility = ${combined}% combined` : ""}
                         </span>
                       </div>
                       <span className="font-bold text-secondary">₹{total.toLocaleString("en-IN")}</span>

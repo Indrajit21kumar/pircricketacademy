@@ -69,9 +69,10 @@ function AddStudentModal({ batches, onClose, onSaved }: { batches: any[]; onClos
     setSaving(true);
     setError("");
     try {
+      const token = localStorage.getItem("pir_admin_token");
       const res = await fetch("/api/students", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ ...form, batchId: form.batchId ? parseInt(form.batchId) : null }),
       });
       if (!res.ok) throw new Error((await res.json()).error);
@@ -145,11 +146,20 @@ export default function StudentsPage() {
   const [qrStudent, setQrStudent] = useState<Student["student"] | null>(null);
   const [showAdd, setShowAdd] = useState(false);
 
+  const authHeaders = () => {
+    const token = localStorage.getItem("pir_admin_token");
+    return token ? { Authorization: `Bearer ${token}` } : {} as Record<string, string>;
+  };
+
   const load = async () => {
     setLoading(true);
-    const [s, b] = await Promise.all([fetch("/api/students").then(r => r.json()), fetch("/api/batches").then(r => r.json())]);
-    setStudents(s);
-    setBatches(b);
+    const headers = authHeaders();
+    const [s, b] = await Promise.all([
+      fetch("/api/students", { headers }).then(r => r.json()),
+      fetch("/api/batches", { headers }).then(r => r.json()),
+    ]);
+    setStudents(Array.isArray(s) ? s : []);
+    setBatches(Array.isArray(b) ? b : []);
     setLoading(false);
   };
 

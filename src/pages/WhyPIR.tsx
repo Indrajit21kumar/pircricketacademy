@@ -25,7 +25,7 @@ export default function WhyPIR() {
           </motion.h1>
           <motion.p initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} transition={{delay:0.2}} className="text-muted-foreground text-lg mb-8">From Beginner to State Aspirant — structured, tracked, supported every step.</motion.p>
           <motion.div initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} transition={{delay:0.3}} className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/admissions" className="bg-secondary text-secondary-foreground font-bold uppercase px-8 py-4 rounded-xl hover:bg-secondary/90 transition-all text-base">Apply for Founding Batch</Link>
+            <Link href="/admissions" className="bg-secondary text-secondary-foreground font-bold uppercase px-8 py-4 rounded-xl hover:bg-secondary/90 transition-all text-base">Apply for Admission</Link>
             <Link href="/" className="border border-border text-foreground font-bold uppercase px-8 py-4 rounded-xl hover:border-secondary/40 transition-all text-base">Book a Trial Session</Link>
           </motion.div>
         </div>
@@ -112,9 +112,9 @@ export default function WhyPIR() {
         <div className="container mx-auto px-4 text-center max-w-2xl">
           <motion.div initial={{opacity:0,y:20}} whileInView={{opacity:1,y:0}} viewport={{once:true}}>
             <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">Give Your Child the Best Start in Cricket</h2>
-            <p className="text-muted-foreground text-lg mb-8">Founding Batch 2026 — Early Admissions Now Open. Seats Limited.</p>
+            <p className="text-muted-foreground text-lg mb-8">Admissions are open now. Batches are forming for the 2026 season.</p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/admissions" className="bg-secondary text-secondary-foreground font-bold uppercase px-8 py-4 rounded-xl hover:bg-secondary/90 transition-all shadow-[0_0_20px_rgba(234,179,8,0.25)] text-base">Apply for Founding Batch 2026</Link>
+              <Link href="/admissions" className="bg-secondary text-secondary-foreground font-bold uppercase px-8 py-4 rounded-xl hover:bg-secondary/90 transition-all shadow-[0_0_20px_rgba(234,179,8,0.25)] text-base">Apply for Admission</Link>
               <Link href="/" className="border border-border text-foreground font-bold uppercase px-8 py-4 rounded-xl hover:border-secondary/40 transition-all text-base">Book a Trial Session</Link>
             </div>
           </motion.div>
