@@ -89,9 +89,9 @@ describe("Booking page — Step 1: Facility selection", () => {
     expect(screen.getByText(/Astro Turf.*Cemented Wicket/i)).toBeInTheDocument();
   });
 
-  it("renders the 'Bowling Machine Bay' facility card", () => {
+  it("renders the 'Cricket Bowling Machine' facility card", () => {
     render(<Booking />);
-    expect(screen.getByText("Bowling Machine Bay")).toBeInTheDocument();
+    expect(screen.getByText("Cricket Bowling Machine")).toBeInTheDocument();
   });
 
   it("shows weekday pricing for Box Cricket Arena (₹1500/hr)", () => {

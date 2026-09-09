@@ -1734,7 +1734,7 @@ const DEFAULT_FACILITY_RATES = [
   { facilityId:"box",     name:"Box Cricket Arena",             emoji:"🏟️", unit:"hr",    weekdayRate:1500, weekendRate:1800, nightRate:2200 },
   { facilityId:"turf",    name:"Turf Wicket",                   emoji:"🏏", unit:"hr",    weekdayRate:800,  weekendRate:1000, nightRate:null },
   { facilityId:"cement",  name:"Astro Turf / Cemented Wicket",  emoji:"⚡", unit:"hr",    weekdayRate:500,  weekendRate:700,  nightRate:null },
-  { facilityId:"bowling", name:"Bowling Machine Bay",           emoji:"🎯", unit:"30min", weekdayRate:300,  weekendRate:400,  nightRate:null },
+  { facilityId:"bowling", name:"Cricket Bowling Machine",       emoji:"⚙️", unit:"30min", weekdayRate:300,  weekendRate:400,  nightRate:null },
 ];
 const DEFAULT_FEE_CONFIG = [
   { key:"registration_fee", label:"Registration Fee",   value:5000 },

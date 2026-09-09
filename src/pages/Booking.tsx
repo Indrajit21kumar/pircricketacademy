@@ -17,7 +17,7 @@ const FALLBACK_FACILITIES: Facility[] = [
   { id:"box",     facilityId:"box",     name:"Box Cricket Arena",             emoji:"🏟️", unit:"hr",    weekdayRate:1500, weekendRate:1800, nightRate:2200, isActive:true, pricing:{weekday:1500,weekend:1800,night:2200},     durations:[1,2,3] },
   { id:"turf",    facilityId:"turf",    name:"Turf Wicket",                   emoji:"🏏", unit:"hr",    weekdayRate:800,  weekendRate:1000, nightRate:null,  isActive:true, pricing:{weekday:800, weekend:1000,night:null},      durations:[1,2,3] },
   { id:"cement",  facilityId:"cement",  name:"Astro Turf / Cemented Wicket",  emoji:"⚡", unit:"hr",    weekdayRate:500,  weekendRate:700,  nightRate:null,  isActive:true, pricing:{weekday:500, weekend:700, night:null},      durations:[1,2,3] },
-  { id:"bowling", facilityId:"bowling", name:"Bowling Machine Bay",           emoji:"🎯", unit:"30min", weekdayRate:300,  weekendRate:400,  nightRate:null,  isActive:true, pricing:{weekday:300, weekend:400, night:null},      durations:[1,2]   },
+  { id:"bowling", facilityId:"bowling", name:"Cricket Bowling Machine",       emoji:"⚙️", unit:"30min", weekdayRate:300,  weekendRate:400,  nightRate:null,  isActive:true, pricing:{weekday:300, weekend:400, night:null},      durations:[1,2]   },
 ];
 
 const SLOTS = ["06:00 AM","07:00 AM","08:00 AM","09:00 AM","10:00 AM","11:00 AM","12:00 PM","01:00 PM","02:00 PM","03:00 PM","04:00 PM","05:00 PM","06:00 PM","07:00 PM","08:00 PM","09:00 PM"];

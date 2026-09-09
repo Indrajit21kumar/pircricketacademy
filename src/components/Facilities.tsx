@@ -76,7 +76,7 @@ const bookable = [
     desc:"Astro turf or cemented wicket for pace and bounce training — essential for technique against fast bowling.",
     pricing:[{slot:"Weekday",price:"₹500/hr"},{slot:"Weekend",price:"₹700/hr"}],
     features:["Hard surface","True bounce","Pace development","Economical option","Available daily"] },
-  { id:"bowling-machine", name:"Bowling Machine", emoji:"🎯",
+  { id:"bowling-machine", name:"Cricket Bowling Machine", emoji:"⚙️",
     photos:[
       "https://images.unsplash.com/photo-1624526267942-ab0ff8a3e972?w=600&h=340&fit=crop&sat=-20",
       "https://images.unsplash.com/photo-1531415074968-036ba1b575da?w=600&h=340&fit=crop&hue-rotate=20",
