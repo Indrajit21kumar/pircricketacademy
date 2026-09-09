@@ -6,7 +6,7 @@ import { GroundTrackerContent } from "./admin/GroundTracker";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 interface Admission { id:number; studentName:string; dob:string; ageGroup:string; school?:string|null; parentName:string; phone:string; email?:string|null; address?:string|null; bloodGroup?:string|null; createdAt:string; status:string; isTrial:boolean; paymentStatus:string; registrationFee:number; totalPaid:number; packageMonths?:number|null; packageDiscountPct?:number|null; eligibilityDiscountPct?:number|null; combinedDiscountPct?:number|null; razorpayPaymentId?:string; paidAt?:string; }
-interface Booking   { id:number; ref:string; facilityName:string; date:string; slot:string; name:string; phone:string; total:number; status:string; refundAmount?:number|null; createdAt:string; }
+interface Booking   { id:number; ref:string; facilityName:string; date:string; slot:string; name:string; phone:string; total:number; discountPct?:number|null; discountedTotal?:number|null; discountNote?:string|null; status:string; refundAmount?:number|null; createdAt:string; }
 interface Inquiry   { id:number; name:string; phone:string; childName:string; ageGroup:string; source:string; createdAt:string; status:string; }
 
 // ── Auth helpers ─────────────────────────────────────────────────────────────
@@ -25,7 +25,7 @@ async function apiFetch(path: string, opts: RequestInit = {}) {
   return res;
 }
 
-const TABS = ["Dashboard","Ground Tracker","Inquiries","Admissions","Bookings","Fees","Students","Coaches","Discounts","Broadcast"];
+const TABS = ["Dashboard","Ground Tracker","Inquiries","Admissions","Bookings","Fees","Students","Coaches","Discounts","Broadcast","Pricing"];
 
 const MODULES = [
   { label: "Students & QR",   href: "/admin/students",        color: "text-blue-400",   bg: "bg-blue-400/10" },
@@ -189,6 +189,8 @@ export default function Admin() {
   const [markPaidNote, setMarkPaidNote] = useState("");
   const [markPaidBooking, setMarkPaidBooking] = useState<Booking | null>(null);
   const [markPaidBookingNote, setMarkPaidBookingNote] = useState("");
+  const [discountBooking, setDiscountBooking] = useState<Booking | null>(null);
+  const [discountForm, setDiscountForm] = useState({ pct: 0, note: "" });
   const [emailTesting, setEmailTesting] = useState(false);
   const [emailResult, setEmailResult] = useState<any>(null);
   const [trialModal, setTrialModal] = useState<{id:number;name:string;parentName:string} | null>(null);
@@ -665,7 +667,17 @@ export default function Admin() {
                           <td className="p-4 font-semibold">{b.facilityName}</td>
                           <td className="p-4 text-muted-foreground text-xs">{b.date} · {b.slot}</td>
                           <td className="p-4">{b.name}</td>
-                          <td className="p-4 font-bold text-secondary">₹{b.total.toLocaleString()}</td>
+                          <td className="p-4">
+                            {(b.discountPct ?? 0) > 0 ? (
+                              <div>
+                                <span className="line-through text-muted-foreground text-xs">₹{b.total.toLocaleString()}</span>
+                                <p className="font-bold text-green-400">₹{(b.discountedTotal ?? b.total).toLocaleString()}</p>
+                                <span className="text-xs bg-green-500/10 text-green-400 border border-green-500/20 rounded px-1.5 py-0.5">{b.discountPct}% off</span>
+                              </div>
+                            ) : (
+                              <span className="font-bold text-secondary">₹{b.total.toLocaleString()}</span>
+                            )}
+                          </td>
                           <td className="p-4"><StatusBadge s={b.status} /></td>
                           <td className="p-4">
                             <div className="flex items-center gap-2 flex-wrap">
@@ -696,6 +708,10 @@ export default function Admin() {
                                   className="text-xs bg-orange-500/10 text-orange-400 border border-orange-500/30 rounded-lg px-3 py-1.5 hover:bg-orange-500/20 transition-colors font-semibold"
                                 >💸 Refund ₹{(b.refundAmount ?? Math.floor(b.total*0.9)).toLocaleString()}</button>
                               )}
+                              <button
+                                onClick={() => { setDiscountBooking(b); setDiscountForm({ pct: b.discountPct ?? 0, note: b.discountNote ?? "" }); }}
+                                className="text-xs bg-yellow-500/10 text-yellow-400 border border-yellow-500/30 rounded-lg px-3 py-1.5 hover:bg-yellow-500/20 transition-colors font-semibold"
+                              >🏷 Discount</button>
                               <button
                                 onClick={async () => {
                                   if (!confirm(`Permanently delete booking ${b.ref}? This cannot be undone.`)) return;
@@ -750,6 +766,65 @@ export default function Admin() {
         </div>
       )}
 
+      {/* Discount Modal — Bookings */}
+      {discountBooking && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4" onClick={() => setDiscountBooking(null)}>
+          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm" onClick={e => e.stopPropagation()}>
+            <h3 className="font-bold text-lg mb-1">Apply Discount</h3>
+            <p className="text-muted-foreground text-sm mb-1">{discountBooking.name} — {discountBooking.facilityName}</p>
+            <p className="text-secondary font-bold text-lg mb-4">Original: ₹{discountBooking.total.toLocaleString()}</p>
+            <div className="mb-4">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">Discount %</label>
+              <div className="flex gap-2 flex-wrap mb-2">
+                {[0,5,10,15,20,25,50,100].map(p => (
+                  <button key={p} onClick={() => setDiscountForm(f => ({ ...f, pct: p }))}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${discountForm.pct === p ? "bg-secondary text-secondary-foreground border-secondary" : "border-border text-muted-foreground hover:border-secondary/40"}`}>
+                    {p === 0 ? "None" : `${p}%`}
+                  </button>
+                ))}
+              </div>
+              <input
+                type="number" min={0} max={100}
+                value={discountForm.pct}
+                onChange={e => setDiscountForm(f => ({ ...f, pct: Math.min(100, Math.max(0, parseInt(e.target.value) || 0)) }))}
+                className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-secondary"
+                placeholder="Enter custom %"
+              />
+            </div>
+            {discountForm.pct > 0 && (
+              <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-3 mb-4 text-center">
+                <p className="text-xs text-muted-foreground">Final amount after {discountForm.pct}% discount</p>
+                <p className="font-bold text-green-400 text-2xl">₹{Math.round(discountBooking.total * (1 - discountForm.pct / 100)).toLocaleString()}</p>
+                <p className="text-xs text-muted-foreground">Saving ₹{Math.round(discountBooking.total * discountForm.pct / 100).toLocaleString()}</p>
+              </div>
+            )}
+            <div className="mb-4">
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">Reason / Note (optional)</label>
+              <input
+                value={discountForm.note}
+                onChange={e => setDiscountForm(f => ({ ...f, note: e.target.value }))}
+                className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-secondary"
+                placeholder="Student family, early booking, special occasion..."
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={async () => {
+                  await apiFetch(`/bookings/${discountBooking.id}/discount`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ discountPct: discountForm.pct, discountNote: discountForm.note || undefined }),
+                  });
+                  setDiscountBooking(null);
+                  load();
+                }}
+                className="flex-1 bg-secondary text-secondary-foreground font-bold py-2.5 rounded-xl hover:bg-secondary/90 transition-colors text-sm"
+              >{discountForm.pct > 0 ? `Apply ${discountForm.pct}% Discount` : "Remove Discount"}</button>
+              <button onClick={() => setDiscountBooking(null)} className="flex-1 border border-border rounded-xl py-2.5 text-sm font-semibold hover:bg-muted/30 transition-colors">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {tab==="Fees"      && <FeesTab apiFetch={apiFetch} />}
       {tab==="__block__" && <BlockBookingsPanel apiFetch={apiFetch} onBack={()=>setTab("Bookings")} />}
       {tab==="Students"  && (
@@ -770,6 +845,7 @@ export default function Admin() {
       {tab==="Coaches"   && <CoachesTab apiFetch={apiFetch} />}
       {tab==="Discounts" && <DiscountsTab apiFetch={apiFetch} />}
       {tab==="Broadcast" && <BroadcastTab apiFetch={apiFetch} senderName="Admin" />}
+      {tab==="Pricing"   && <PricingTab apiFetch={apiFetch} />}
 
       </div>
 
@@ -1678,6 +1754,181 @@ function DiscountsTab({ apiFetch }: { apiFetch: (p:string, o?:RequestInit)=>Prom
 
 // ── Broadcast Tab (shared between admin and reception portals) ─────────────────
 interface BroadcastMsg { id: number; title: string; message: string; audience: string; createdBy: string; createdAt: string; }
+
+// ── Pricing Settings Tab ──────────────────────────────────────────────────────
+function PricingTab({ apiFetch }: { apiFetch: (p:string, o?:RequestInit)=>Promise<Response> }) {
+  type FacilityRow = { id: number; facilityId: string; name: string; emoji: string; unit: string; weekdayRate: number; weekendRate: number; nightRate: number | null; isActive: boolean };
+  type FeeRow = { id: number; key: string; label: string; value: number };
+
+  const [facilities, setFacilities] = useState<FacilityRow[]>([]);
+  const [fees, setFees] = useState<FeeRow[]>([]);
+  const [editingFacility, setEditingFacility] = useState<FacilityRow | null>(null);
+  const [facilityForm, setFacilityForm] = useState({ weekdayRate: 0, weekendRate: 0, nightRate: "" as string | number });
+  const [editingFee, setEditingFee] = useState<FeeRow | null>(null);
+  const [feeValue, setFeeValue] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  const load = async () => {
+    const [fRes, cRes] = await Promise.all([apiFetch("/facility-rates"), apiFetch("/fee-config")]);
+    if (fRes.ok) setFacilities(await fRes.json());
+    if (cRes.ok) setFees(await cRes.json());
+  };
+  useEffect(() => { load(); }, []);
+
+  const saveFacility = async () => {
+    if (!editingFacility) return;
+    setSaving(true);
+    await apiFetch(`/facility-rates/${editingFacility.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        weekdayRate: Number(facilityForm.weekdayRate),
+        weekendRate: Number(facilityForm.weekendRate),
+        nightRate: facilityForm.nightRate === "" || facilityForm.nightRate === null ? null : Number(facilityForm.nightRate),
+      }),
+    });
+    setSaving(false); setEditingFacility(null); setMsg("Rates updated!"); load();
+    setTimeout(() => setMsg(""), 3000);
+  };
+
+  const saveFee = async () => {
+    if (!editingFee) return;
+    setSaving(true);
+    await apiFetch(`/fee-config/${editingFee.key}`, { method: "PATCH", body: JSON.stringify({ value: Number(feeValue) }) });
+    setSaving(false); setEditingFee(null); setMsg("Fee updated!"); load();
+    setTimeout(() => setMsg(""), 3000);
+  };
+
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="font-display text-3xl font-bold">Pricing Settings</h2>
+          <p className="text-muted-foreground">Change rates here — booking page and fee calculations update automatically.</p>
+        </div>
+        {msg && <span className="text-green-400 text-sm font-bold">{msg}</span>}
+      </div>
+
+      {/* Facility Rates */}
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        <div className="p-5 border-b border-border">
+          <h3 className="font-bold text-lg">Facility Booking Rates</h3>
+          <p className="text-muted-foreground text-sm">These rates appear live on the public booking page.</p>
+        </div>
+        <div className="divide-y divide-border">
+          {facilities.map(f => (
+            <div key={f.id} className="p-5 flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">{f.emoji}</span>
+                <div>
+                  <p className="font-bold">{f.name}</p>
+                  <p className="text-xs text-muted-foreground">per {f.unit}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-6 text-sm">
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground">Weekday</p>
+                  <p className="font-bold text-secondary text-lg">₹{f.weekdayRate.toLocaleString()}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground">Weekend</p>
+                  <p className="font-bold text-secondary text-lg">₹{f.weekendRate.toLocaleString()}</p>
+                </div>
+                {f.nightRate != null && (
+                  <div className="text-center">
+                    <p className="text-xs text-muted-foreground">Night</p>
+                    <p className="font-bold text-secondary text-lg">₹{f.nightRate.toLocaleString()}</p>
+                  </div>
+                )}
+                <button
+                  onClick={() => { setEditingFacility(f); setFacilityForm({ weekdayRate: f.weekdayRate, weekendRate: f.weekendRate, nightRate: f.nightRate ?? "" }); }}
+                  className="text-xs bg-secondary/10 text-secondary border border-secondary/30 rounded-lg px-3 py-1.5 hover:bg-secondary/20 transition-colors font-semibold"
+                >✏️ Edit</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Academy Fees */}
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        <div className="p-5 border-b border-border">
+          <h3 className="font-bold text-lg">Academy Admission Fees</h3>
+          <p className="text-muted-foreground text-sm">Used in all admission fee calculations automatically.</p>
+        </div>
+        <div className="divide-y divide-border">
+          {fees.map(f => (
+            <div key={f.key} className="p-5 flex items-center justify-between gap-4">
+              <div>
+                <p className="font-bold">{f.label}</p>
+                <p className="text-xs text-muted-foreground font-mono">{f.key}</p>
+              </div>
+              <div className="flex items-center gap-4">
+                <p className="font-bold text-secondary text-xl">₹{f.value.toLocaleString()}</p>
+                <button
+                  onClick={() => { setEditingFee(f); setFeeValue(f.value); }}
+                  className="text-xs bg-secondary/10 text-secondary border border-secondary/30 rounded-lg px-3 py-1.5 hover:bg-secondary/20 transition-colors font-semibold"
+                >✏️ Edit</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Edit Facility Modal */}
+      {editingFacility && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4" onClick={() => setEditingFacility(null)}>
+          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm space-y-4" onClick={e => e.stopPropagation()}>
+            <h3 className="font-bold text-lg">{editingFacility.emoji} {editingFacility.name}</h3>
+            <p className="text-xs text-muted-foreground">Rate per {editingFacility.unit}</p>
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">Weekday Rate (₹)</label>
+              <input type="number" min={0} value={facilityForm.weekdayRate} onChange={e => setFacilityForm(f => ({ ...f, weekdayRate: Number(e.target.value) }))}
+                className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-secondary" />
+            </div>
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">Weekend Rate (₹)</label>
+              <input type="number" min={0} value={facilityForm.weekendRate} onChange={e => setFacilityForm(f => ({ ...f, weekendRate: Number(e.target.value) }))}
+                className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-secondary" />
+            </div>
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">Night Rate (₹) — leave blank if no night booking</label>
+              <input type="number" min={0} value={facilityForm.nightRate} onChange={e => setFacilityForm(f => ({ ...f, nightRate: e.target.value }))}
+                placeholder="Leave blank to disable night rate"
+                className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-secondary" />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button onClick={saveFacility} disabled={saving} className="flex-1 bg-secondary text-secondary-foreground font-bold py-2.5 rounded-xl hover:bg-secondary/90 transition-colors text-sm disabled:opacity-60">
+                {saving ? "Saving..." : "Save Rates"}
+              </button>
+              <button onClick={() => setEditingFacility(null)} className="flex-1 border border-border rounded-xl py-2.5 text-sm font-semibold hover:bg-muted/30 transition-colors">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Fee Modal */}
+      {editingFee && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4" onClick={() => setEditingFee(null)}>
+          <div className="bg-card border border-border rounded-2xl p-6 w-full max-w-sm space-y-4" onClick={e => e.stopPropagation()}>
+            <h3 className="font-bold text-lg">Edit {editingFee.label}</h3>
+            <div>
+              <label className="text-xs font-bold uppercase tracking-wider text-muted-foreground block mb-1.5">Amount (₹)</label>
+              <input type="number" min={0} value={feeValue} onChange={e => setFeeValue(Number(e.target.value))}
+                className="w-full bg-background border border-border rounded-lg px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-secondary" />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button onClick={saveFee} disabled={saving} className="flex-1 bg-secondary text-secondary-foreground font-bold py-2.5 rounded-xl hover:bg-secondary/90 transition-colors text-sm disabled:opacity-60">
+                {saving ? "Saving..." : "Save Fee"}
+              </button>
+              <button onClick={() => setEditingFee(null)} className="flex-1 border border-border rounded-xl py-2.5 text-sm font-semibold hover:bg-muted/30 transition-colors">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </motion.div>
+  );
+}
 
 export function BroadcastTab({ apiFetch, senderName }: { apiFetch: (p: string, o?: RequestInit) => Promise<Response>; senderName: string }) {
   const [msgs, setMsgs]       = useState<BroadcastMsg[]>([]);

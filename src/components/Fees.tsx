@@ -1,17 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { CheckCircle, Zap, Star, Trophy, IndianRupee, Shield, Home, Award, Flame, ChevronDown, ChevronUp, Users, Target } from "lucide-react";
+import { CheckCircle, Zap, Star, Trophy, IndianRupee, Shield, Home, Award, Flame, ChevronDown, ChevronUp, Users, Target, Tag } from "lucide-react";
 
 // ── Fee constants ─────────────────────────────────────────────────────────────
 const REGISTRATION_FEE = 5000;
 const KIT_FEE = 2000;
 const MONTHLY_FEE = 3500;
 
-const PACKAGES = [
-  { key: "3month",  label: "3-Month Pack",  months: 3,  discountPct: 10, highlight: false, Icon: Zap },
-  { key: "6month",  label: "6-Month Pack",  months: 6,  discountPct: 15, highlight: true,  Icon: Star },
-  { key: "12month", label: "12-Month Pack", months: 12, discountPct: 20, highlight: false, Icon: Trophy },
-];
+const PKG_ICONS = [Zap, Star, Trophy, Award, Flame, Shield];
+
+interface ApiPackage { id: number; months: number; label: string; discountPct: number; isActive: boolean; }
+interface ApiDiscount { id: number; name: string; percentage: number; description: string; isActive: boolean; }
 
 function calcPackage(months: number, discountPct: number) {
   const monthlyTotal  = months * MONTHLY_FEE;
@@ -27,55 +26,58 @@ const BASE_FEES = [
   { Icon: Zap,         label: "Monthly Fee",        desc: "Full access to all training sessions & facilities",  amount: MONTHLY_FEE,       tag: "Per month" },
 ];
 
-// ── Special eligibility discounts ─────────────────────────────────────────────
-const SPECIAL_DISCOUNTS = [
-  {
-    Icon: Flame, title: "India / Challenger Trophy Player", subtitle: "Completely Free — Tuition Fee",
-    discount: "100% FREE", highlight: true,
-    color: "text-secondary", bg: "bg-secondary/10 border-secondary/40", badge: "bg-secondary/20 text-secondary",
-    description: "Any cricketer who has represented India at any age group, or played in the Challenger Trophy, trains at PIR Cricket Academy completely free of monthly tuition — at any age. No tuition fee, no conditions. This is our commitment to elite Indian cricket.",
-  },
-  {
-    Icon: Star, title: "Pre-Opening Founding Batch", subtitle: "25% Off — Tuition Fee",
-    discount: "25%", highlight: false,
-    color: "text-yellow-400", bg: "bg-yellow-500/10 border-yellow-500/30", badge: "bg-yellow-500/15 text-yellow-400",
-    description: "Register before 20 August 2026 and lock in 25% off your monthly tuition fee for the entire founding season. Applies to monthly tuition fee only — not on registration or kit fee. No document required; discount is automatic for all founding batch admissions.",
-  },
-  {
-    Icon: Shield, title: "State Player (Bihar)", subtitle: "15% Off — Tuition Fee",
-    discount: "15%", highlight: false,
-    color: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/30", badge: "bg-blue-500/15 text-blue-400",
-    description: "Any player who has represented Bihar in official BCCI-affiliated cricket (U-14, U-16, U-19, U-23, Senior) receives 15% off monthly tuition fee. Required: BCCI-affiliated scorecard or selection letter confirming Bihar state representation.",
-  },
-  {
-    Icon: Target, title: "District Player (Patna)", subtitle: "10% Off — Tuition Fee",
-    discount: "10%", highlight: false,
-    color: "text-cyan-400", bg: "bg-cyan-500/10 border-cyan-500/30", badge: "bg-cyan-500/15 text-cyan-400",
-    description: "Any player who has represented Patna District in official BCCI / Patna District Cricket Association matches receives 10% off monthly tuition fee. Required: scorecard or selection letter from a BCCI-affiliated district tournament.",
-  },
-  {
-    Icon: Award, title: "State Selection from PIR Academy", subtitle: "50% Off — Ongoing Reward",
-    discount: "50%", highlight: false,
-    color: "text-orange-400", bg: "bg-orange-500/10 border-orange-500/30", badge: "bg-orange-500/15 text-orange-400",
-    description: "If you earn your state selection while training at PIR Cricket Academy, your monthly tuition fee is cut by 50% immediately and remains at that rate for as long as you train here. Applies to tuition fee only. Your success is our success.",
-  },
-  {
-    Icon: Home, title: "Police Colony Resident", subtitle: "10% Off — Tuition Fee",
-    discount: "10%", highlight: false,
-    color: "text-purple-400", bg: "bg-purple-500/10 border-purple-500/30", badge: "bg-purple-500/15 text-purple-400",
-    description: "Residents of Police Colony, Patna receive 10% off monthly tuition fee. Required: Aadhaar card of student or parent showing Police Colony, Patna address. Applies to tuition fee only.",
-  },
-  {
-    Icon: Users, title: "Sibling Discount", subtitle: "15% Off — Tuition Fee",
-    discount: "15%", highlight: false,
-    color: "text-teal-400", bg: "bg-teal-500/10 border-teal-500/30", badge: "bg-teal-500/15 text-teal-400",
-    description: "Families enrolling 2 or more children at PIRcricketHub simultaneously receive 15% off monthly tuition fee for each sibling. Required: enrollment receipt or Aadhaar of the sibling already registered. Applies to tuition fee only.",
-  },
+// ── Style map for known discount names ────────────────────────────────────────
+const STYLE_MAP: { match: (name: string) => boolean; Icon: React.ElementType; color: string; bg: string; badge: string; highlight?: boolean }[] = [
+  { match: n => n.toLowerCase().includes("india") || n.toLowerCase().includes("challenger"),
+    Icon: Flame, color: "text-secondary", bg: "bg-secondary/10 border-secondary/40", badge: "bg-secondary/20 text-secondary", highlight: true },
+  { match: n => n.toLowerCase().includes("state player") || n.toLowerCase().includes("bihar"),
+    Icon: Shield, color: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/30", badge: "bg-blue-500/15 text-blue-400" },
+  { match: n => n.toLowerCase().includes("district") || n.toLowerCase().includes("patna"),
+    Icon: Target, color: "text-cyan-400", bg: "bg-cyan-500/10 border-cyan-500/30", badge: "bg-cyan-500/15 text-cyan-400" },
+  { match: n => n.toLowerCase().includes("state selection") || n.toLowerCase().includes("pir academy"),
+    Icon: Award, color: "text-orange-400", bg: "bg-orange-500/10 border-orange-500/30", badge: "bg-orange-500/15 text-orange-400" },
+  { match: n => n.toLowerCase().includes("police colony") || n.toLowerCase().includes("resident"),
+    Icon: Home, color: "text-purple-400", bg: "bg-purple-500/10 border-purple-500/30", badge: "bg-purple-500/15 text-purple-400" },
+  { match: n => n.toLowerCase().includes("sibling"),
+    Icon: Users, color: "text-teal-400", bg: "bg-teal-500/10 border-teal-500/30", badge: "bg-teal-500/15 text-teal-400" },
+];
+const FALLBACK_STYLES: { Icon: React.ElementType; color: string; bg: string; badge: string; highlight?: boolean }[] = [
+  { Icon: Tag,    color: "text-secondary",  bg: "bg-secondary/10 border-secondary/30",  badge: "bg-secondary/15 text-secondary" },
+  { Icon: Star,   color: "text-yellow-400", bg: "bg-yellow-500/10 border-yellow-500/30", badge: "bg-yellow-500/15 text-yellow-400" },
+  { Icon: Shield, color: "text-blue-400",   bg: "bg-blue-500/10 border-blue-500/30",    badge: "bg-blue-500/15 text-blue-400" },
+  { Icon: Target, color: "text-cyan-400",   bg: "bg-cyan-500/10 border-cyan-500/30",    badge: "bg-cyan-500/15 text-cyan-400" },
+  { Icon: Home,   color: "text-purple-400", bg: "bg-purple-500/10 border-purple-500/30", badge: "bg-purple-500/15 text-purple-400" },
+];
+function getDiscountStyle(name: string, idx: number) {
+  return STYLE_MAP.find(s => s.match(name)) ?? FALLBACK_STYLES[idx % FALLBACK_STYLES.length];
+}
+
+// ── Fallback packages (shown while loading or if API empty) ───────────────────
+const DEFAULT_PACKAGES: ApiPackage[] = [
+  { id: 0, months: 3,  label: "3-Month Pack",  discountPct: 10, isActive: true },
+  { id: 0, months: 6,  label: "6-Month Pack",  discountPct: 15, isActive: true },
+  { id: 0, months: 12, label: "12-Month Pack", discountPct: 20, isActive: true },
 ];
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function Fees() {
   const [openDiscount, setOpenDiscount] = useState<number | null>(null);
+  const [packages, setPackages] = useState<ApiPackage[]>(DEFAULT_PACKAGES);
+  const [discounts, setDiscounts] = useState<ApiDiscount[]>([]);
+
+  useEffect(() => {
+    fetch("/api/fee-packages")
+      .then(r => r.json())
+      .then((d: ApiPackage[]) => { if (Array.isArray(d) && d.length > 0) setPackages(d.filter(p => p.isActive)); })
+      .catch(() => {});
+    fetch("/api/discount-types")
+      .then(r => r.json())
+      .then((d: { discounts?: ApiDiscount[] } | ApiDiscount[]) => {
+        const list = Array.isArray(d) ? d : (d.discounts ?? []);
+        setDiscounts(list.filter(x => x.isActive));
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <section id="fees" className="py-24 bg-gradient-to-b from-card/20 to-background">
@@ -126,18 +128,20 @@ export default function Fees() {
         </div>
 
         <div className="grid md:grid-cols-3 gap-6 mb-6">
-          {PACKAGES.map((pkg, i) => {
+          {packages.map((pkg, i) => {
             const { monthlyTotal, discountAmount, total } = calcPackage(pkg.months, pkg.discountPct);
+            const highlight = i === 1;
+            const Icon = PKG_ICONS[i % PKG_ICONS.length];
             return (
-              <motion.div key={pkg.key} initial={{opacity:0,y:30}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:i*0.12}}
-                className={`relative rounded-2xl border-2 shadow-lg overflow-hidden flex flex-col ${pkg.highlight ? "border-secondary shadow-secondary/20" : "border-border"} bg-card`}>
-                {pkg.highlight && (
+              <motion.div key={pkg.id || pkg.months} initial={{opacity:0,y:30}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:i*0.12}}
+                className={`relative rounded-2xl border-2 shadow-lg overflow-hidden flex flex-col ${highlight ? "border-secondary shadow-secondary/20" : "border-border"} bg-card`}>
+                {highlight && (
                   <div className="bg-secondary text-secondary-foreground text-center py-2 text-xs font-bold uppercase tracking-widest">Most Popular</div>
                 )}
                 <div className="p-7 flex flex-col gap-5 flex-1">
                   <div className="flex items-center gap-3">
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${pkg.highlight ? "bg-secondary/20" : "bg-muted/50"}`}>
-                      <pkg.Icon className={`w-6 h-6 ${pkg.highlight ? "text-secondary" : "text-foreground"}`} />
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${highlight ? "bg-secondary/20" : "bg-muted/50"}`}>
+                      <Icon className={`w-6 h-6 ${highlight ? "text-secondary" : "text-foreground"}`} />
                     </div>
                     <div>
                       <h5 className="font-display text-xl font-bold uppercase">{pkg.label}</h5>
@@ -146,9 +150,9 @@ export default function Fees() {
                   </div>
 
                   {/* Savings badge */}
-                  <div className={`rounded-xl p-4 text-center border ${pkg.highlight ? "bg-secondary/10 border-secondary/30" : "bg-muted/30 border-border"}`}>
+                  <div className={`rounded-xl p-4 text-center border ${highlight ? "bg-secondary/10 border-secondary/30" : "bg-muted/30 border-border"}`}>
                     <p className="text-xs text-muted-foreground mb-1">You save</p>
-                    <p className={`font-display text-2xl font-bold ${pkg.highlight ? "text-secondary" : "text-foreground"}`}>₹{discountAmount.toLocaleString("en-IN")}</p>
+                    <p className={`font-display text-2xl font-bold ${highlight ? "text-secondary" : "text-foreground"}`}>₹{discountAmount.toLocaleString("en-IN")}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">{pkg.discountPct}% off monthly fees</p>
                   </div>
 
@@ -166,7 +170,7 @@ export default function Fees() {
 
                   <button
                     onClick={() => document.getElementById("contact")?.scrollIntoView({behavior:"smooth"})}
-                    className={`w-full font-bold uppercase tracking-widest py-3 rounded-xl mt-auto transition-all ${pkg.highlight ? "bg-secondary text-secondary-foreground hover:bg-secondary/90" : "border border-border hover:bg-muted/40 text-foreground"}`}>
+                    className={`w-full font-bold uppercase tracking-widest py-3 rounded-xl mt-auto transition-all ${highlight ? "bg-secondary text-secondary-foreground hover:bg-secondary/90" : "border border-border hover:bg-muted/40 text-foreground"}`}>
                     Select This Package
                   </button>
                 </div>
@@ -191,35 +195,43 @@ export default function Fees() {
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
-          {SPECIAL_DISCOUNTS.map((d, i) => (
-            <motion.div key={d.title} initial={{opacity:0,y:24}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:i*0.08}}
-              className={`relative rounded-2xl border-2 p-6 flex flex-col gap-4 ${d.bg} ${d.highlight ? "shadow-xl shadow-secondary/20" : "shadow-sm"}`}>
-              {d.highlight && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="bg-secondary text-secondary-foreground text-xs font-bold uppercase tracking-widest px-4 py-1 rounded-full shadow">Highest Honour</span>
+          {discounts.map((d, i) => {
+            const style = getDiscountStyle(d.name, i);
+            const discountLabel = d.percentage >= 100 ? "100% FREE" : `${d.percentage}%`;
+            const subtitle = `${d.percentage >= 100 ? "Completely Free" : `${d.percentage}% Off`} — Tuition Fee`;
+            return (
+              <motion.div key={d.id} initial={{opacity:0,y:24}} whileInView={{opacity:1,y:0}} viewport={{once:true}} transition={{delay:i*0.08}}
+                className={`relative rounded-2xl border-2 p-6 flex flex-col gap-4 ${style.bg} ${style.highlight ? "shadow-xl shadow-secondary/20" : "shadow-sm"}`}>
+                {style.highlight && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <span className="bg-secondary text-secondary-foreground text-xs font-bold uppercase tracking-widest px-4 py-1 rounded-full shadow">Highest Honour</span>
+                  </div>
+                )}
+                <div className="flex items-start gap-4">
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${style.bg}`}>
+                    <style.Icon className={`w-6 h-6 ${style.color}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h5 className="font-display text-base font-bold uppercase leading-tight">{d.name}</h5>
+                    <p className={`text-sm font-semibold mt-0.5 ${style.color}`}>{subtitle}</p>
+                  </div>
+                  <div className={`shrink-0 rounded-xl px-3 py-2 text-center font-display font-black text-lg ${style.badge}`}>{discountLabel}</div>
                 </div>
-              )}
-              <div className="flex items-start gap-4">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${d.bg}`}>
-                  <d.Icon className={`w-6 h-6 ${d.color}`} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h5 className="font-display text-base font-bold uppercase leading-tight">{d.title}</h5>
-                  <p className={`text-sm font-semibold mt-0.5 ${d.color}`}>{d.subtitle}</p>
-                </div>
-                <div className={`shrink-0 rounded-xl px-3 py-2 text-center font-display font-black text-lg ${d.badge}`}>{d.discount}</div>
-              </div>
 
-              {/* Expandable description */}
-              <button onClick={() => setOpenDiscount(openDiscount === i ? null : i)}
-                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors self-start">
-                {openDiscount === i ? <><ChevronUp className="h-3.5 w-3.5"/>Hide details</> : <><ChevronDown className="h-3.5 w-3.5"/>See details</>}
-              </button>
-              {openDiscount === i && (
-                <p className="text-muted-foreground text-sm leading-relaxed border-t border-current/10 pt-3">{d.description}</p>
-              )}
-            </motion.div>
-          ))}
+                {/* Expandable description */}
+                <button onClick={() => setOpenDiscount(openDiscount === i ? null : i)}
+                  className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors self-start">
+                  {openDiscount === i ? <><ChevronUp className="h-3.5 w-3.5"/>Hide details</> : <><ChevronDown className="h-3.5 w-3.5"/>See details</>}
+                </button>
+                {openDiscount === i && (
+                  <p className="text-muted-foreground text-sm leading-relaxed border-t border-current/10 pt-3">{d.description}</p>
+                )}
+              </motion.div>
+            );
+          })}
+          {discounts.length === 0 && (
+            <div className="col-span-3 text-center py-12 text-muted-foreground">Loading discounts…</div>
+          )}
         </div>
 
         <div className="bg-card border border-border rounded-2xl p-6 text-center max-w-2xl mx-auto">

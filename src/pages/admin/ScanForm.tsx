@@ -112,7 +112,6 @@ export default function ScanFormPage() {
     if (!scanned.ag?.trim()) missing.push("Age Group");
     if (!scanned.pn?.trim()) missing.push("Parent Name");
     if (!scanned.ph?.trim()) missing.push("Phone");
-    if (!scanned.em?.trim()) missing.push("Email");
     if (missing.length > 0) {
       setSubmitError(`Missing required fields from form: ${missing.join(", ")}. Ask parent to refill the form with all fields.`);
       setSubmitState("error");
@@ -122,7 +121,7 @@ export default function ScanFormPage() {
     setSubmitError("");
     try {
       const token = getAdminToken();
-      const res = await fetch("/api/admissions", {
+      const res = await fetch("/api/admissions/offline", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -133,7 +132,7 @@ export default function ScanFormPage() {
           bloodGroup: scanned.bg || undefined,
           parentName: scanned.pn,
           phone: scanned.ph,
-          email: scanned.em,
+          email: scanned.em || undefined,
           address: scanned.addr || undefined,
           emergencyName: scanned.en || scanned.pn,
           emergencyPhone: scanned.ep || scanned.ph,
@@ -144,13 +143,11 @@ export default function ScanFormPage() {
           consentLiability: true, consentTerms: true, consentData: true,
           isTrial: false,
           source: "Offline Paper Form",
-          packageMonths: null,
-          eligibilityDiscountPct: 0,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Submission failed");
-      setAdmissionRef(data.ref || `ADM-${Date.now()}`);
+      setAdmissionRef(data.ref || `ADM-${data.id}`);
       setSubmitState("success");
     } catch (e: any) {
       setSubmitError(e.message || "Unknown error");

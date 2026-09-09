@@ -19,6 +19,7 @@ export const admissions = pgTable("admissions", {
   dob: text("dob").notNull(),
   ageGroup: text("age_group").notNull(),
   school: text("school"),
+  dressSize: text("dress_size"),
   parentName: text("parent_name").notNull(),
   phone: text("phone").notNull(),
   email: text("email"),
@@ -63,12 +64,18 @@ export const bookings = pgTable("bookings", {
   duration: integer("duration").notNull(),
   rate: integer("rate").notNull(),
   total: integer("total").notNull(),
+  discountPct: integer("discount_pct").default(0).notNull(),        // 0-100, set by admin
+  discountedTotal: integer("discounted_total"),                      // final amount after discount (null = no discount)
+  discountNote: text("discount_note"),                               // reason for discount
   name: text("name").notNull(),
   phone: text("phone").notNull(),
   email: text("email"),
   razorpayOrderId: text("razorpay_order_id"),
   razorpayPaymentId: text("razorpay_payment_id"),
-  status: text("status").default("pending_payment").notNull(), // pending_payment | confirmed | completed | cancelled
+  status: text("status").default("pending_payment").notNull(), // pending_payment | confirmed | completed | cancelled | cancellation_requested | refunded
+  refundAmount: integer("refund_amount"),
+  refundNote: text("refund_note"),
+  refundAt: timestamp("refund_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -264,6 +271,55 @@ export const passwordResets = pgTable("password_resets", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// ── Fee packages (admin-managed, e.g. 3-month/10%, 6-month/15%, 12-month/20%) ─
+export const feePackages = pgTable("fee_packages", {
+  id: serial("id").primaryKey(),
+  months: integer("months").notNull().unique(),       // 3, 6, or 12
+  label: text("label").notNull(),                     // e.g. "3-Month Pack"
+  discountPct: integer("discount_pct").notNull(),     // 0-100
+  isActive: boolean("is_active").default(true).notNull(),
+  sortOrder: integer("sort_order").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ── Booking blocks (admin can block dates/slots/facilities) ───────────────────
+export const blockedSlots = pgTable("blocked_slots", {
+  id: serial("id").primaryKey(),
+  date: text("date").notNull(),                    // YYYY-MM-DD, or "*" for recurring
+  facility: text("facility").notNull(),            // box | turf | cement | bowling | all
+  slot: text("slot"),                              // null = entire day blocked
+  reason: text("reason").notNull(),
+  createdBy: text("created_by").notNull().default("admin"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ── Facility pricing (admin-configurable, replaces hardcoded rates) ───────────
+export const facilityRates = pgTable("facility_rates", {
+  id: serial("id").primaryKey(),
+  facilityId: text("facility_id").notNull().unique(), // box | turf | cement | bowling
+  name: text("name").notNull(),
+  emoji: text("emoji").notNull(),
+  unit: text("unit").notNull(),                        // hr | 30min
+  weekdayRate: integer("weekday_rate").notNull(),
+  weekendRate: integer("weekend_rate").notNull(),
+  nightRate: integer("night_rate"),                    // null = no night pricing
+  isActive: boolean("is_active").default(true).notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// ── Academy fee configuration (admin-configurable, replaces hardcoded fees) ───
+export const feeConfig = pgTable("fee_config", {
+  id: serial("id").primaryKey(),
+  key: text("key").notNull().unique(),   // registration_fee | monthly_fee | kit_fee
+  label: text("label").notNull(),
+  value: integer("value").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export type FeePackage             = typeof feePackages.$inferSelect;
 export type DiscountType           = typeof discountTypes.$inferSelect;
 export type DiscountApplication    = typeof discountApplications.$inferSelect;
 export type PasswordReset          = typeof passwordResets.$inferSelect;
+export type BlockedSlot            = typeof blockedSlots.$inferSelect;
+export type FacilityRate           = typeof facilityRates.$inferSelect;
+export type FeeConfigRow           = typeof feeConfig.$inferSelect;

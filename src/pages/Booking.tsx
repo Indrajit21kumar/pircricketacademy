@@ -10,15 +10,19 @@ declare global {
   }
 }
 
-const FACILITIES = [
-  { id:"box",     name:"Box Cricket Arena",   emoji:"🏟️", pricing:{weekday:1500, weekend:1800, night:2200},  unit:"hr",   durations:[1,2,3] },
-  { id:"turf",    name:"Turf Wicket",         emoji:"🏏", pricing:{weekday:800,  weekend:1000, night:null},   unit:"hr",   durations:[1,2,3] },
-  { id:"cement",  name:"Astro Turf / Cemented Wicket", emoji:"⚡", pricing:{weekday:500, weekend:700, night:null}, unit:"hr", durations:[1,2,3] },
-  { id:"bowling", name:"Bowling Machine Bay", emoji:"🎯", pricing:{weekday:300,  weekend:400,  night:null},   unit:"30min",durations:[1,2] },
+type Facility = { id: string; facilityId: string; name: string; emoji: string; unit: string; weekdayRate: number; weekendRate: number; nightRate: number | null; isActive: boolean; pricing: { weekday: number; weekend: number; night: number | null }; durations: number[] };
+
+// Fallback rates used until API responds
+const FALLBACK_FACILITIES: Facility[] = [
+  { id:"box",     facilityId:"box",     name:"Box Cricket Arena",             emoji:"🏟️", unit:"hr",    weekdayRate:1500, weekendRate:1800, nightRate:2200, isActive:true, pricing:{weekday:1500,weekend:1800,night:2200},     durations:[1,2,3] },
+  { id:"turf",    facilityId:"turf",    name:"Turf Wicket",                   emoji:"🏏", unit:"hr",    weekdayRate:800,  weekendRate:1000, nightRate:null,  isActive:true, pricing:{weekday:800, weekend:1000,night:null},      durations:[1,2,3] },
+  { id:"cement",  facilityId:"cement",  name:"Astro Turf / Cemented Wicket",  emoji:"⚡", unit:"hr",    weekdayRate:500,  weekendRate:700,  nightRate:null,  isActive:true, pricing:{weekday:500, weekend:700, night:null},      durations:[1,2,3] },
+  { id:"bowling", facilityId:"bowling", name:"Bowling Machine Bay",           emoji:"🎯", unit:"30min", weekdayRate:300,  weekendRate:400,  nightRate:null,  isActive:true, pricing:{weekday:300, weekend:400, night:null},      durations:[1,2]   },
 ];
+
 const SLOTS = ["06:00 AM","07:00 AM","08:00 AM","09:00 AM","10:00 AM","11:00 AM","12:00 PM","01:00 PM","02:00 PM","03:00 PM","04:00 PM","05:00 PM","06:00 PM","07:00 PM","08:00 PM","09:00 PM"];
 
-function getRate(facility: typeof FACILITIES[0], slot: string, date: string) {
+function getRate(facility: Facility, slot: string, date: string) {
   if (!date || !slot) return facility.pricing.weekday;
   const day = new Date(date).getDay();
   const isWeekend = day === 0 || day === 6;
@@ -28,7 +32,7 @@ function getRate(facility: typeof FACILITIES[0], slot: string, date: string) {
   return isWeekend ? facility.pricing.weekend : facility.pricing.weekday;
 }
 
-function durationLabel(facility: typeof FACILITIES[0], d: number) {
+function durationLabel(facility: Facility, d: number) {
   if (facility.unit === "30min") return d === 1 ? "30 min" : "1 hour";
   return d === 1 ? "1 Hour" : `${d} Hours`;
 }
@@ -53,6 +57,23 @@ export default function Booking() {
   const [serverError, setServerError] = useState("");
   const [payMode, setPayMode] = useState<"online"|"cash">("online");
   const [bookedSlots, setBookedSlots] = useState<string[]>([]);
+  const [FACILITIES, setFACILITIES] = useState<Facility[]>(FALLBACK_FACILITIES);
+
+  useEffect(() => {
+    fetch("/api/facility-rates")
+      .then(r => r.ok ? r.json() : null)
+      .then((rows: any[]) => {
+        if (!rows?.length) return;
+        const active = rows.filter(r => r.isActive).map((r: any) => ({
+          ...r,
+          id: r.facilityId,
+          pricing: { weekday: r.weekdayRate, weekend: r.weekendRate, night: r.nightRate },
+          durations: r.unit === "30min" ? [1, 2] : [1, 2, 3],
+        }));
+        if (active.length) setFACILITIES(active);
+      })
+      .catch(() => {});
+  }, []);
   const [blockedSlots, setBlockedSlots] = useState<any[]>([]);
   const [slotPopup, setSlotPopup] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string,string>>({});

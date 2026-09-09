@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
-import { Menu, X, ChevronDown, User, GraduationCap, ShieldCheck } from "lucide-react";
+import { Menu, X, ChevronDown, User, GraduationCap, ShieldCheck, ClipboardList } from "lucide-react";
 
 const NAV = [
   { label: "Home",       href: "/",         external: true },
@@ -15,9 +15,10 @@ const NAV = [
 ];
 
 const PORTALS = [
-  { label: "Student Login", href: "/student", icon: GraduationCap, desc: "View attendance, fees & performance" },
-  { label: "Coach Login",   href: "/coach",   icon: User,           desc: "Session notes, ratings & batches" },
-  { label: "Admin Login",   href: "/admin",   icon: ShieldCheck,    desc: "Full academy management" },
+  { label: "Student Login",    href: "/student",   icon: GraduationCap, desc: "View attendance, fees & performance" },
+  { label: "Coach Login",      href: "/coach",     icon: User,          desc: "Session notes, ratings & batches" },
+  { label: "Reception Login",  href: "/reception", icon: ClipboardList, desc: "Admissions, walk-ins & fee collection" },
+  { label: "Admin Login",      href: "/admin",     icon: ShieldCheck,   desc: "Full academy management" },
 ];
 
 export default function Navbar() {
@@ -112,7 +113,7 @@ export default function Navbar() {
       {/* Mobile menu */}
       {open && (
         <div className="xl:hidden bg-background border-t border-border shadow-xl">
-          <div className="flex flex-col p-4 gap-3">
+          <div className="flex flex-col p-4 gap-3 overflow-y-auto max-h-[85vh]">
             {NAV.map(n => n.external
               ? <Link key={n.label} href={n.href} onClick={() => setOpen(false)} className="py-2 font-semibold uppercase tracking-wider border-b border-border/40 text-foreground">{n.label}</Link>
               : <button key={n.label} onClick={() => go(n.href)} className="text-left py-2 font-semibold uppercase tracking-wider border-b border-border/40 text-foreground">{n.label}</button>

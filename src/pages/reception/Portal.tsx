@@ -3,9 +3,10 @@ import { Link } from "wouter";
 import {
   QrCode, Users, Calendar, Search, LogIn, LogOut, CheckCircle,
   AlertCircle, Camera, CameraOff, Keyboard, Clock, ChevronRight,
-  ClipboardList, UserPlus, Banknote, CreditCard, X
+  ClipboardList, UserPlus, Banknote, CreditCard, X, Megaphone
 } from "lucide-react";
 import jsQR from "jsqr";
+import { BroadcastTab } from "@/pages/Admin";
 
 const TODAY = new Date().toISOString().split("T")[0];
 const REC_TOKEN_KEY = "pir_reception_token";
@@ -266,13 +267,153 @@ function AttendanceScan({ userName }: { userName: string }) {
 
 // ─── Walk-in Registration Tab ─────────────────────────────────────────────────
 type ScannedForm = {
-  sn?: string; dob?: string; ag?: string; sch?: string; bg?: string;
+  sn?: string; dob?: string; ag?: string; sch?: string; bg?: string; ds?: string;
   pn?: string; ph?: string; em?: string; addr?: string;
   en?: string; ep?: string; ast?: boolean; alg?: string; med?: string;
 };
 
+const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "Unknown"];
+const DRESS_SIZES = ["20 (Age 5–6)","22 (Age 7–8)","24 (Age 9–10)","26 (Age 11–12)","28 (Age 13–14)","30 / XS Adult","32 / S Adult","34 / M Adult","36 / L Adult","38 / XL Adult","40 / XXL Adult","42 / XXXL Adult"];
+
+function ManualEntryForm({ onSubmit, onBack }: { onSubmit: (data: ScannedForm) => void; onBack: () => void }) {
+  const [f, setF] = useState<ScannedForm>({ ast: false });
+  const [err, setErr] = useState("");
+  const upd = (k: keyof ScannedForm, v: string | boolean) => setF(p => ({ ...p, [k]: v }));
+
+  const submit = () => {
+    if (!f.sn?.trim()) return setErr("Student name is required");
+    if (!f.ag?.trim()) return setErr("Age group is required");
+    if (!f.pn?.trim()) return setErr("Parent name is required");
+    if (!f.ph?.trim()) return setErr("Phone number is required");
+    setErr("");
+    onSubmit(f);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="font-bold text-white text-sm">Manual Entry — Paper Form</h3>
+        <button onClick={onBack} className="text-gray-400 hover:text-white text-xs">← Back</button>
+      </div>
+      <p className="text-xs text-gray-400">Type the details from the handwritten admission form.</p>
+
+      <div className="space-y-3">
+        <div>
+          <label className={lbl}>Student Full Name *</label>
+          <input className={inp} value={f.sn||""} onChange={e => upd("sn", e.target.value)} placeholder="As written on form" />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={lbl}>Date of Birth</label>
+            <input type="date" className={inp} value={f.dob||""} onChange={e => upd("dob", e.target.value)} />
+          </div>
+          <div>
+            <label className={lbl}>Age Group *</label>
+            <select className={inp} value={f.ag||""} onChange={e => upd("ag", e.target.value)}>
+              <option value="">Select</option>
+              {AGE_GROUPS.map(g => <option key={g} value={g}>{g}</option>)}
+            </select>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className={lbl}>School / College</label>
+            <input className={inp} value={f.sch||""} onChange={e => upd("sch", e.target.value)} placeholder="School name" />
+          </div>
+          <div>
+            <label className={lbl}>Dress Size * <span className="font-normal normal-case tracking-normal text-gray-500">(kit ₹2,000)</span></label>
+            <select className={inp} value={(f as any).ds||""} onChange={e => upd("ds" as any, e.target.value)}>
+              <option value="">Select size</option>
+              {DRESS_SIZES.map(s => <option key={s} value={s.split(" ")[0]}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className={lbl}>Blood Group</label>
+            <select className={inp} value={f.bg||""} onChange={e => upd("bg", e.target.value)}>
+              <option value="">Unknown</option>
+              {BLOOD_GROUPS.map(g => <option key={g} value={g}>{g}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div className="border-t border-gray-700 pt-3">
+          <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-2 font-bold">Parent / Guardian</p>
+          <div className="space-y-3">
+            <div>
+              <label className={lbl}>Parent Name *</label>
+              <input className={inp} value={f.pn||""} onChange={e => upd("pn", e.target.value)} placeholder="Full name" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={lbl}>Phone *</label>
+                <input type="tel" className={inp} value={f.ph||""} onChange={e => upd("ph", e.target.value)} placeholder="+91 XXXXX XXXXX" />
+              </div>
+              <div>
+                <label className={lbl}>Email</label>
+                <input type="email" className={inp} value={f.em||""} onChange={e => upd("em", e.target.value)} placeholder="Optional" />
+              </div>
+            </div>
+            <div>
+              <label className={lbl}>Address</label>
+              <input className={inp} value={f.addr||""} onChange={e => upd("addr", e.target.value)} placeholder="House No., Area, Patna" />
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t border-gray-700 pt-3">
+          <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-2 font-bold">Emergency Contact</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={lbl}>Name</label>
+              <input className={inp} value={f.en||""} onChange={e => upd("en", e.target.value)} placeholder="Contact name" />
+            </div>
+            <div>
+              <label className={lbl}>Phone</label>
+              <input type="tel" className={inp} value={f.ep||""} onChange={e => upd("ep", e.target.value)} placeholder="+91 XXXXX XXXXX" />
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t border-gray-700 pt-3">
+          <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-2 font-bold">Medical</p>
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <label className={lbl + " mb-0"}>Asthma?</label>
+              <div className="flex gap-3">
+                <label className="flex items-center gap-1.5 text-sm text-white cursor-pointer">
+                  <input type="radio" name="ast" checked={!f.ast} onChange={() => upd("ast", false)} className="accent-yellow-500" /> No
+                </label>
+                <label className="flex items-center gap-1.5 text-sm text-white cursor-pointer">
+                  <input type="radio" name="ast" checked={!!f.ast} onChange={() => upd("ast", true)} className="accent-yellow-500" /> Yes
+                </label>
+              </div>
+            </div>
+            <div>
+              <label className={lbl}>Allergies</label>
+              <input className={inp} value={f.alg||""} onChange={e => upd("alg", e.target.value)} placeholder="e.g. peanuts, dust (or None)" />
+            </div>
+            <div>
+              <label className={lbl}>Other Medical Notes</label>
+              <input className={inp} value={f.med||""} onChange={e => upd("med", e.target.value)} placeholder="Any health conditions" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {err && <p className="text-red-400 text-sm bg-red-400/10 border border-red-400/20 rounded-lg p-3">{err}</p>}
+
+      <button
+        onClick={submit}
+        className="w-full bg-yellow-500 text-black font-bold py-3 rounded-xl hover:bg-yellow-400 transition-colors text-sm flex items-center justify-center gap-2"
+      >
+        Review Details →
+      </button>
+    </div>
+  );
+}
+
 function WalkIn() {
-  const [step, setStep] = useState<"scan" | "preview" | "payment" | "success">("scan");
+  const [step, setStep] = useState<"choose" | "scan" | "manual" | "preview" | "payment" | "success">("choose");
   const [scanned, setScanned] = useState<ScannedForm | null>(null);
   const [parseError, setParseError] = useState("");
   const [payMode, setPayMode] = useState<"cash" | "online">("cash");
@@ -306,7 +447,6 @@ function WalkIn() {
     if (!scanned.ag?.trim()) missing.push("Age Group");
     if (!scanned.pn?.trim()) missing.push("Parent Name");
     if (!scanned.ph?.trim()) missing.push("Phone");
-    if (!scanned.em?.trim()) missing.push("Email");
     if (!scanned.en?.trim()) missing.push("Emergency Contact Name");
     if (!scanned.ep?.trim()) missing.push("Emergency Contact Phone");
   }
@@ -316,19 +456,17 @@ function WalkIn() {
     if (!scanned) return;
     setSubmitting(true); setSubmitError("");
     try {
-      const res = await apiFetch("/admissions", {
+      const res = await apiFetch("/admissions/offline", {
         method: "POST",
         body: JSON.stringify({
-          studentName: scanned.sn!, dob: scanned.dob!, ageGroup: scanned.ag!,
-          school: scanned.sch || "", parentName: scanned.pn!, phone: scanned.ph!,
-          email: scanned.em!, address: scanned.addr || "",
+          studentName: scanned.sn!, dob: scanned.dob || "", ageGroup: scanned.ag!,
+          school: scanned.sch || "", dressSize: scanned.ds || undefined,
+          parentName: scanned.pn!, phone: scanned.ph!,
+          email: scanned.em || undefined, address: scanned.addr || "",
           bloodGroup: scanned.bg || "", allergies: scanned.alg || "",
           asthma: !!scanned.ast, medicalNotes: scanned.med || "",
-          emergencyName: scanned.en!, emergencyPhone: scanned.ep!,
-          consentMedical: true, consentPhoto: true, consentLiability: true,
-          consentTerms: true, consentData: true,
-          source: "Offline Paper Form — Walk-in",
-          isTrial: false,
+          emergencyName: scanned.en || "", emergencyPhone: scanned.ep || "",
+          source: "Offline Paper Form — Walk-in Cash",
         }),
       });
       const data = await res.json();
@@ -341,7 +479,7 @@ function WalkIn() {
         body: JSON.stringify({ amount: paidAmount, note: "CASH — walk-in reception" }),
       });
 
-      setAdmRef(`ADM-${data.id}`);
+      setAdmRef(data.ref || `ADM-${data.id}`);
       setStep("success");
     } catch (err: any) { setSubmitError(err.message); }
     finally { setSubmitting(false); }
@@ -352,15 +490,17 @@ function WalkIn() {
     if (!scanned) return;
     setSubmitting(true); setSubmitError("");
     try {
+      // For online payment, use the main admissions endpoint to create a Razorpay order
       const res = await apiFetch("/admissions", {
         method: "POST",
         body: JSON.stringify({
-          studentName: scanned.sn!, dob: scanned.dob!, ageGroup: scanned.ag!,
-          school: scanned.sch || "", parentName: scanned.pn!, phone: scanned.ph!,
-          email: scanned.em!, address: scanned.addr || "",
+          studentName: scanned.sn!, dob: scanned.dob || "", ageGroup: scanned.ag!,
+          school: scanned.sch || "", dressSize: scanned.ds || undefined,
+          parentName: scanned.pn!, phone: scanned.ph!,
+          email: scanned.em || "noemail@pircricket.in", address: scanned.addr || "",
           bloodGroup: scanned.bg || "", allergies: scanned.alg || "",
           asthma: !!scanned.ast, medicalNotes: scanned.med || "",
-          emergencyName: scanned.en!, emergencyPhone: scanned.ep!,
+          emergencyName: scanned.en || "", emergencyPhone: scanned.ep || "",
           consentMedical: true, consentPhoto: true, consentLiability: true,
           consentTerms: true, consentData: true,
           source: "Offline Paper Form — Walk-in Online Pay",
@@ -402,7 +542,7 @@ function WalkIn() {
   };
 
   const reset = () => {
-    setStep("scan"); setScanned(null); setParseError(""); setPayMode("cash");
+    setStep("choose"); setScanned(null); setParseError(""); setPayMode("cash");
     setCashAmount("5000"); setSubmitError(""); setAdmRef(""); setCameraActive(true); setManualJson("");
   };
 
@@ -420,9 +560,57 @@ function WalkIn() {
     </div>
   );
 
+  if (step === "choose") return (
+    <div className="space-y-4">
+      <div>
+        <h3 className="font-bold text-white mb-1">Register Walk-in Student</h3>
+        <p className="text-sm text-gray-400">How did the parent submit their form?</p>
+      </div>
+      <button
+        onClick={() => { setStep("manual"); setCameraActive(false); }}
+        className="w-full bg-[#0d1529] border-2 border-yellow-500/40 rounded-2xl p-5 text-left hover:border-yellow-500 transition-colors group"
+      >
+        <div className="flex items-start gap-4">
+          <div className="w-10 h-10 bg-yellow-500/20 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-yellow-500/30 transition-colors">
+            <Keyboard className="h-5 w-5 text-yellow-400" />
+          </div>
+          <div>
+            <p className="font-bold text-white text-sm">Type from Paper Form</p>
+            <p className="text-gray-400 text-xs mt-0.5">Parent filled a blank paper form at reception — enter their details manually</p>
+            <p className="text-yellow-400 text-xs mt-1.5 font-semibold">← Most common</p>
+          </div>
+        </div>
+      </button>
+      <button
+        onClick={() => { setStep("scan"); setCameraActive(true); }}
+        className="w-full bg-[#0d1529] border-2 border-gray-700 rounded-2xl p-5 text-left hover:border-gray-500 transition-colors group"
+      >
+        <div className="flex items-start gap-4">
+          <div className="w-10 h-10 bg-gray-700/50 rounded-xl flex items-center justify-center shrink-0 group-hover:bg-gray-700 transition-colors">
+            <QrCode className="h-5 w-5 text-gray-400" />
+          </div>
+          <div>
+            <p className="font-bold text-white text-sm">Scan QR from Form</p>
+            <p className="text-gray-400 text-xs mt-0.5">Parent pre-filled the form online and printed it with a QR code</p>
+          </div>
+        </div>
+      </button>
+    </div>
+  );
+
+  if (step === "manual") return (
+    <ManualEntryForm
+      onSubmit={data => { setScanned(data); setStep("preview"); }}
+      onBack={() => setStep("choose")}
+    />
+  );
+
   if (step === "scan") return (
     <div className="space-y-4">
-      <p className="text-sm text-gray-400">Scan the QR code from the student's printed offline form.</p>
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-gray-400">Scan the QR from the student's printed offline form.</p>
+        <button onClick={() => setStep("choose")} className="text-gray-400 hover:text-white text-xs">← Back</button>
+      </div>
       {parseError && <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-3 text-red-400 text-sm">{parseError}</div>}
       <div className="bg-[#0d1529] border-2 border-dashed border-yellow-500/30 rounded-2xl overflow-hidden">
         {cameraState === "error" ? (
@@ -467,7 +655,7 @@ function WalkIn() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="font-bold text-white">Scanned Details</h3>
-        <button onClick={() => { setStep("scan"); setCameraActive(true); }} className="text-gray-400 hover:text-white">
+        <button onClick={() => { setStep("choose"); setCameraActive(false); }} className="text-gray-400 hover:text-white">
           <X className="h-5 w-5" />
         </button>
       </div>
@@ -680,7 +868,7 @@ function StudentLookup() {
 }
 
 // ─── Main Portal ──────────────────────────────────────────────────────────────
-type Tab = "attendance" | "walkin" | "bookings" | "students";
+type Tab = "attendance" | "walkin" | "bookings" | "students" | "broadcast";
 
 export default function ReceptionPortal() {
   const [loggedIn, setLoggedIn] = useState(!!getToken());
@@ -694,6 +882,7 @@ export default function ReceptionPortal() {
     { id: "walkin", icon: <UserPlus className="h-5 w-5" />, label: "Walk-in" },
     { id: "bookings", icon: <Calendar className="h-5 w-5" />, label: "Bookings" },
     { id: "students", icon: <Search className="h-5 w-5" />, label: "Students" },
+    { id: "broadcast", icon: <Megaphone className="h-5 w-5" />, label: "Broadcast" },
   ];
 
   return (
@@ -722,6 +911,11 @@ export default function ReceptionPortal() {
           {tab === "walkin" && <WalkIn />}
           {tab === "bookings" && <TodayBookings />}
           {tab === "students" && <StudentLookup />}
+          {tab === "broadcast" && (
+            <div className="pb-4">
+              <BroadcastTab apiFetch={apiFetch} senderName={userName || "Reception"} />
+            </div>
+          )}
         </div>
       </div>
 

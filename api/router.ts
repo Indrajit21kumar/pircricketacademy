@@ -5,7 +5,7 @@ import {
   handleSessionNotes, handlePlayerRatings, handleFees, handleNotifications,
   handleParent, handleStudentPortal, handleTemplates, handleCampaigns, handleEvents, handleUsers,
   handleDiscountTypes, handleDiscountApplications, handlePasswordReset, handleDebugEmail,
-  handleBlockedSlots, handlePackages,
+  handleBlockedSlots, handlePackages, handleFacilityRates, handleFeeConfig,
 } from "./_handlers.js";
 
 // ── Simple in-memory rate limiter (per IP, resets every minute) ──────────────
@@ -75,7 +75,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       case "discount-applications":   return handleDiscountApplications(req, res);
       case "password-reset":          return handlePasswordReset(req, res, sub);
       case "debug-email":             return handleDebugEmail(req, res);
-      case "blocked-slots":  { (req as any)._sub = sub; return handleBlockedSlots(req, res); }
+      case "blocked-slots":    { (req as any)._sub = sub; return handleBlockedSlots(req, res); }
+      case "facility-rates":   return handleFacilityRates(req, res, sub);
+      case "fee-config":       return handleFeeConfig(req, res, sub);
       default:               return res.status(404).json({ error: `Unknown resource: ${resource}` });
     }
   } catch (e: any) {

@@ -5,6 +5,7 @@ import {
   attendance, messageTemplates, messageCampaigns, followUps, fees,
   notifications, sessionNotes, playerRatings, events,
   discountTypes, discountApplications, passwordResets, blockedSlots, feePackages,
+  facilityRates, feeConfig,
 } from "../server/db/schema.js";
 import { eq, inArray, lt, and } from "drizzle-orm";
 import { z } from "zod";
@@ -280,12 +281,15 @@ async function handleAdmissions(req: VercelRequest, res: VercelResponse, sub: st
       isTrial: z.boolean().default(false), source: z.string().optional(),
     }).parse(req.body);
     const ip = (req.headers["x-forwarded-for"] as string || "").split(",")[0].trim() || "admin";
+    await seedFeeConfig();
+    const feeRowsOffline = await db.select().from(feeConfig);
+    const regFeeOffline = feeRowsOffline.find(r => r.key === "registration_fee")?.value ?? 5000;
     const [row] = await db.insert(admissions).values({
       ...data,
       consentIp: ip,
       paymentStatus: "pending",
-      registrationFee: 5000,
-      totalPaid: 5000,
+      registrationFee: regFeeOffline,
+      totalPaid: regFeeOffline,
       packageMonths: null,
       packageDiscountPct: 0,
       eligibilityDiscountPct: 0,
@@ -320,10 +324,13 @@ async function handleAdmissions(req: VercelRequest, res: VercelResponse, sub: st
       eligibilityDiscountPct: z.number().int().min(0).max(100).optional(),
     }).parse(req.body);
 
-    // Calculate amounts
-    const MONTHLY_FEE = 3500;
-    const KIT_FEE = 2000;
-    const REG_FEE = 5000;
+    // Calculate amounts — read from DB fee config (falls back to defaults if not seeded)
+    await seedFeeConfig();
+    const feeRows = await db.select().from(feeConfig);
+    const getFee = (key: string, fallback: number) => feeRows.find(r => r.key === key)?.value ?? fallback;
+    const MONTHLY_FEE = getFee("monthly_fee", 3500);
+    const KIT_FEE = getFee("kit_fee", 2000);
+    const REG_FEE = getFee("registration_fee", 5000);
     const pkgMonths = data.packageMonths ?? null;
     const pkgRow = pkgMonths ? (await db.select().from(feePackages).where(eq(feePackages.months, pkgMonths)))[0] : null;
     const pkgDiscount = pkgRow?.discountPct ?? (pkgMonths === 3 ? 10 : pkgMonths === 6 ? 15 : pkgMonths === 12 ? 20 : 0);
@@ -777,6 +784,24 @@ async function handleBookings(req: VercelRequest, res: VercelResponse, sub: stri
     }).where(eq(bookings.id, id)).returning();
     // Send booking notifications (same as online payment)
     await sendBookingNotifications(row).catch(() => {});
+    return res.json(row);
+  }
+
+  // PATCH /api/bookings/:id/discount — admin sets or removes a discount on a booking
+  if (req.method === "PATCH" && id && action === "discount") {
+    try { requireAdmin(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
+    const { discountPct, discountNote } = z.object({
+      discountPct: z.number().int().min(0).max(100),
+      discountNote: z.string().optional(),
+    }).parse(req.body);
+    const [existing] = await db.select().from(bookings).where(eq(bookings.id, id)).limit(1);
+    if (!existing) return res.status(404).json({ error: "Booking not found" });
+    const discountedTotal = discountPct > 0 ? Math.round(existing.total * (1 - discountPct / 100)) : null;
+    const [row] = await db.update(bookings).set({
+      discountPct,
+      discountedTotal,
+      discountNote: discountNote || null,
+    }).where(eq(bookings.id, id)).returning();
     return res.json(row);
   }
 
@@ -1704,9 +1729,84 @@ export async function handleBlockedSlots(req: VercelRequest, res: VercelResponse
   return res.status(405).json({ error: "Method not allowed" });
 }
 
+// ── Default seeding helpers ────────────────────────────────────────────────────
+const DEFAULT_FACILITY_RATES = [
+  { facilityId:"box",     name:"Box Cricket Arena",             emoji:"🏟️", unit:"hr",    weekdayRate:1500, weekendRate:1800, nightRate:2200 },
+  { facilityId:"turf",    name:"Turf Wicket",                   emoji:"🏏", unit:"hr",    weekdayRate:800,  weekendRate:1000, nightRate:null },
+  { facilityId:"cement",  name:"Astro Turf / Cemented Wicket",  emoji:"⚡", unit:"hr",    weekdayRate:500,  weekendRate:700,  nightRate:null },
+  { facilityId:"bowling", name:"Bowling Machine Bay",           emoji:"🎯", unit:"30min", weekdayRate:300,  weekendRate:400,  nightRate:null },
+];
+const DEFAULT_FEE_CONFIG = [
+  { key:"registration_fee", label:"Registration Fee",   value:5000 },
+  { key:"monthly_fee",      label:"Monthly Fee",        value:3500 },
+  { key:"kit_fee",          label:"Kit Fee",            value:2000 },
+];
+
+async function seedFacilityRates() {
+  const existing = await db.select().from(facilityRates);
+  if (existing.length > 0) return;
+  await db.insert(facilityRates).values(DEFAULT_FACILITY_RATES);
+}
+async function seedFeeConfig() {
+  const existing = await db.select().from(feeConfig);
+  if (existing.length > 0) return;
+  await db.insert(feeConfig).values(DEFAULT_FEE_CONFIG);
+}
+
+// ── GET /api/facility-rates  — public, used by booking page
+// ── PATCH /api/facility-rates/:id  — admin only
+// ── GET /api/fee-config  — admin only
+// ── PATCH /api/fee-config/:key  — admin only
+async function handleFacilityRates(req: VercelRequest, res: VercelResponse, sub: string[]) {
+  await seedFacilityRates();
+  if (req.method === "GET") {
+    const all = await db.select().from(facilityRates).orderBy(facilityRates.id);
+    return res.json(all);
+  }
+  // All writes require admin
+  try { requireAdmin(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
+  const id = sub[0] ? parseInt(sub[0]) : null;
+  if (req.method === "PATCH" && id) {
+    const data = z.object({
+      name: z.string().min(1).optional(),
+      emoji: z.string().optional(),
+      weekdayRate: z.number().int().positive().optional(),
+      weekendRate: z.number().int().positive().optional(),
+      nightRate: z.number().int().positive().nullable().optional(),
+      isActive: z.boolean().optional(),
+    }).parse(req.body);
+    const [row] = await db.update(facilityRates)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(facilityRates.id, id))
+      .returning();
+    return res.json(row);
+  }
+  return res.status(405).json({ error: "Method not allowed" });
+}
+
+async function handleFeeConfig(req: VercelRequest, res: VercelResponse, sub: string[]) {
+  await seedFeeConfig();
+  try { requireAdmin(req); } catch (e: any) { return res.status(e.status || 401).json({ error: e.message }); }
+  if (req.method === "GET") {
+    const all = await db.select().from(feeConfig).orderBy(feeConfig.id);
+    return res.json(all);
+  }
+  const key = sub[0];
+  if (req.method === "PATCH" && key) {
+    const { value } = z.object({ value: z.number().int().min(0) }).parse(req.body);
+    const [row] = await db.update(feeConfig)
+      .set({ value, updatedAt: new Date() })
+      .where(eq(feeConfig.key, key))
+      .returning();
+    return res.json(row);
+  }
+  return res.status(405).json({ error: "Method not allowed" });
+}
+
 export {
   handleAuth, handleInquiries, handleFollowUps, handleAdmissions,
   handleBookings, handleBatches, handleStudents, handleAttendance,
   handleSessionNotes, handlePlayerRatings, handleFees, handleNotifications,
   handleParent, handleStudentPortal, handleTemplates, handleCampaigns, handleEvents, handleUsers,
+  handleFacilityRates, handleFeeConfig,
 };

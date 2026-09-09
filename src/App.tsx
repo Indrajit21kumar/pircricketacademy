@@ -20,6 +20,7 @@ import AdmissionFormPrint from "@/pages/AdmissionFormPrint";
 import ScanFormPage from "@/pages/admin/ScanForm";
 import ReceptionPortal from "@/pages/reception/Portal";
 import Curriculum from "@/pages/Curriculum";
+import CancelBooking from "@/pages/CancelBooking";
 
 const qc = new QueryClient();
 
@@ -46,6 +47,7 @@ export default function App() {
         <Route path="/admin/scan-form" component={ScanFormPage} />
         <Route path="/reception" component={ReceptionPortal} />
         <Route path="/curriculum" component={Curriculum} />
+        <Route path="/booking/cancel" component={CancelBooking} />
         <Route component={NotFound} />
       </Switch>
     </QueryClientProvider>
