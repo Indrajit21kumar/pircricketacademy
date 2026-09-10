@@ -755,7 +755,7 @@ function WalkIn() {
 
 // ─── Today's Bookings Tab ─────────────────────────────────────────────────────
 function TodayBookings() {
-  const [date, setDate] = useState(TODAY);
+  const [date, setDate] = useState(getToday);
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 

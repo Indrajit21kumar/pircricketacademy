@@ -25,8 +25,8 @@ export default function AttendancePage() {
 
   useEffect(() => { load(); }, [date]);
 
-  const present = records.filter(r => r.attendance.status === "present").length;
-  const late = records.filter(r => r.attendance.status === "late").length;
+  const present = records.filter(r => r.record.status === "present").length;
+  const late = records.filter(r => r.record.status === "late").length;
 
   return (
     <div className="min-h-screen bg-[#0a0f1e] text-white p-4 md:p-8">
@@ -74,18 +74,18 @@ export default function AttendancePage() {
         ) : (
           <div className="space-y-3">
             {records.map((r) => (
-              <div key={r.attendance.id} className="bg-[#0d1529] border border-gray-800 rounded-xl p-4 flex items-center justify-between">
+              <div key={r.record.id} className="bg-[#0d1529] border border-gray-800 rounded-xl p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 bg-yellow-500/10 border border-yellow-500/30 rounded-full flex items-center justify-center text-yellow-400 font-bold text-xs">
                     {r.student?.name?.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
                   </div>
                   <div>
                     <p className="font-bold text-white text-sm">{r.student?.name}</p>
-                    <p className="text-gray-400 text-xs">{r.batch?.name || "No batch"} · Marked by {r.attendance.markedBy}</p>
+                    <p className="text-gray-400 text-xs">{r.batch?.name || "No batch"} · Marked by {r.record.markedBy}</p>
                   </div>
                 </div>
-                <span className={`text-xs px-3 py-1 rounded-full font-bold ${r.attendance.status === "present" ? "bg-green-500/15 text-green-400" : "bg-yellow-500/15 text-yellow-400"}`}>
-                  {r.attendance.status}
+                <span className={`text-xs px-3 py-1 rounded-full font-bold ${r.record.status === "present" ? "bg-green-500/15 text-green-400" : "bg-yellow-500/15 text-yellow-400"}`}>
+                  {r.record.status}
                 </span>
               </div>
             ))}
