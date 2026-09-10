@@ -11,7 +11,10 @@ export default function AttendancePage() {
 
   const load = async () => {
     setLoading(true);
-    const res = await fetch(`/api/attendance?date=${date}`);
+    const token = localStorage.getItem("pir_admin_token") || "";
+    const res = await fetch(`/api/attendance?date=${date}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
     const data = await res.json();
     setRecords(Array.isArray(data) ? data : []);
     setLoading(false);

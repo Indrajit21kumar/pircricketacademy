@@ -7,11 +7,23 @@ const TODAY = new Date().toISOString().split("T")[0];
 
 type ScanResult = { success: boolean; message: string; studentName?: string };
 
+function getCoachToken() { return localStorage.getItem("pir_coach_token") || ""; }
 function getCoachName(): string {
   try {
     const user = JSON.parse(localStorage.getItem("pir_coach_user") || "null");
     return user?.name || "";
   } catch { return ""; }
+}
+function coachFetch(path: string, opts: RequestInit = {}) {
+  const token = getCoachToken();
+  return fetch(`/api${path}`, {
+    ...opts,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(opts.headers || {}),
+    },
+  });
 }
 
 export default function ScanPage() {
@@ -33,7 +45,7 @@ export default function ScanPage() {
   const manualRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetch(`/api/attendance?date=${TODAY}`)
+    coachFetch(`/attendance?date=${TODAY}`)
       .then(r => r.json())
       .then(data => setTodayCount(Array.isArray(data) ? data.length : 0));
   }, [result]);
@@ -44,9 +56,8 @@ export default function ScanPage() {
     setLoading(true);
     setResult(null);
     try {
-      const res = await fetch("/api/attendance", {
+      const res = await coachFetch("/attendance", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ qrToken: token.trim(), markedBy: coachName, sessionDate: date, status: "present" }),
       });
       const data = await res.json();
@@ -159,7 +170,7 @@ export default function ScanPage() {
             <input
               className="w-full bg-[#0d1529] border border-gray-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-yellow-500"
               value={coachName}
-              onChange={e => { setCoachName(e.target.value); localStorage.setItem("coachName", e.target.value); }}
+              onChange={e => setCoachName(e.target.value)}
               placeholder="Coach Pankaj Mishra"
             />
           </div>
