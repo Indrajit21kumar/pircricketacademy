@@ -2,10 +2,13 @@ import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { CalendarDays, CheckCircle, Clock, Users, ChevronLeft } from "lucide-react";
 
-const TODAY = new Date().toISOString().split("T")[0];
+function getToday() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
 
 export default function AttendancePage() {
-  const [date, setDate] = useState(TODAY);
+  const [date, setDate] = useState(getToday);
   const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -58,7 +61,7 @@ export default function AttendancePage() {
         <div className="mb-6">
           <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1.5">Select Date</label>
           <input type="date" className="bg-[#0d1529] border border-gray-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-yellow-500"
-            value={date} onChange={e => setDate(e.target.value)} max={TODAY} />
+            value={date} onChange={e => setDate(e.target.value)} max={getToday()} />
         </div>
 
         {loading ? (

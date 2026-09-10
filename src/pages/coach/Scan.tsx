@@ -3,7 +3,10 @@ import { Link } from "wouter";
 import { QrCode, CheckCircle, AlertCircle, Users, Camera, CameraOff, Keyboard } from "lucide-react";
 import jsQR from "jsqr";
 
-const TODAY = new Date().toISOString().split("T")[0];
+function getToday() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
 
 type ScanResult = { success: boolean; message: string; studentName?: string };
 
@@ -28,7 +31,7 @@ function coachFetch(path: string, opts: RequestInit = {}) {
 
 export default function ScanPage() {
   const [coachName, setCoachName] = useState(getCoachName);
-  const [date, setDate] = useState(TODAY);
+  const [date, setDate] = useState(getToday);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [todayCount, setTodayCount] = useState(0);
@@ -45,10 +48,10 @@ export default function ScanPage() {
   const manualRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    coachFetch(`/attendance?date=${TODAY}`)
+    coachFetch(`/attendance?date=${date}`)
       .then(r => r.json())
       .then(data => setTodayCount(Array.isArray(data) ? data.length : 0));
-  }, [result]);
+  }, [result, date]);
 
   const markAttendance = useCallback(async (token: string) => {
     if (!coachName.trim()) { setResult({ success: false, message: "Please enter your name first." }); return; }
@@ -156,7 +159,7 @@ export default function ScanPage() {
           <div className="flex items-center gap-2.5">
             <Users className="h-4 w-4 text-yellow-400 shrink-0" />
             <div>
-              <p className="text-[10px] text-gray-400 uppercase tracking-wider">Today's Attendance</p>
+              <p className="text-[10px] text-gray-400 uppercase tracking-wider">{date === getToday() ? "Today's Attendance" : "Attendance for Date"}</p>
               <p className="font-semibold text-white text-sm">{date}</p>
             </div>
           </div>

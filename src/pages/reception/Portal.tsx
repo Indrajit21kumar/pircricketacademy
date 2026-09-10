@@ -8,7 +8,12 @@ import {
 import jsQR from "jsqr";
 import { BroadcastTab } from "@/pages/Admin";
 
-const TODAY = new Date().toISOString().split("T")[0];
+// Always computed fresh — avoids stale date when app is left open across days
+// Uses local time not UTC so IST users get the correct date
+function getToday() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
 const REC_TOKEN_KEY = "pir_reception_token";
 const REC_USER_KEY = "pir_reception_user";
 
@@ -156,7 +161,7 @@ function ReceptionLogin({ onLogin }: { onLogin: (name: string) => void }) {
 
 // ─── Attendance Scan Tab ───────────────────────────────────────────────────────
 function AttendanceScan({ userName }: { userName: string }) {
-  const [date, setDate] = useState(TODAY);
+  const [date, setDate] = useState(getToday);
   const [todayCount, setTodayCount] = useState(0);
   const [mode, setMode] = useState<"camera" | "manual">("camera");
   const [manualToken, setManualToken] = useState("");
@@ -165,8 +170,8 @@ function AttendanceScan({ userName }: { userName: string }) {
   const manualRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    apiFetch(`/attendance?date=${TODAY}`).then(r => r.json()).then(d => setTodayCount(Array.isArray(d) ? d.length : 0));
-  }, [result]);
+    apiFetch(`/attendance?date=${date}`).then(r => r.json()).then(d => setTodayCount(Array.isArray(d) ? d.length : 0));
+  }, [result, date]);
 
   const markAttendance = useCallback(async (token: string) => {
     if (!token.trim()) return;
@@ -192,7 +197,7 @@ function AttendanceScan({ userName }: { userName: string }) {
         <div className="flex items-center gap-2.5">
           <Users className="h-4 w-4 text-yellow-400 shrink-0" />
           <div>
-            <p className="text-[10px] text-gray-400 uppercase tracking-wider">Today's Attendance</p>
+            <p className="text-[10px] text-gray-400 uppercase tracking-wider">{date === getToday() ? "Today's Attendance" : "Attendance for Date"}</p>
             <p className="font-semibold text-white text-sm">{date}</p>
           </div>
         </div>
