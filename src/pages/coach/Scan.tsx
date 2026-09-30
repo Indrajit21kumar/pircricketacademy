@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { QrCode, CheckCircle, AlertCircle, Users, Camera, CameraOff, Keyboard } from "lucide-react";
 import jsQR from "jsqr";
 
@@ -17,7 +17,7 @@ function getCoachName(): string {
     return user?.name || "";
   } catch { return ""; }
 }
-function coachFetch(path: string, opts: RequestInit = {}) {
+function coachFetch(path: string, opts: RequestInit = {}, onExpired?: () => void) {
   const token = getCoachToken();
   return fetch(`/api${path}`, {
     ...opts,
@@ -26,10 +26,19 @@ function coachFetch(path: string, opts: RequestInit = {}) {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(opts.headers || {}),
     },
+  }).then(res => {
+    if (res.status === 401) {
+      localStorage.removeItem("pir_coach_token");
+      localStorage.removeItem("pir_coach_user");
+      onExpired?.();
+    }
+    return res;
   });
 }
 
 export default function ScanPage() {
+  const [, navigate] = useLocation();
+  const handleExpired = useCallback(() => navigate("/coach"), [navigate]);
   const [coachName, setCoachName] = useState(getCoachName);
   const [date, setDate] = useState(getToday);
   const [result, setResult] = useState<ScanResult | null>(null);
@@ -48,10 +57,10 @@ export default function ScanPage() {
   const manualRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    coachFetch(`/attendance?date=${date}`)
+    coachFetch(`/attendance?date=${date}`, {}, handleExpired)
       .then(r => r.json())
       .then(data => setTodayCount(Array.isArray(data) ? data.length : 0));
-  }, [result, date]);
+  }, [result, date, handleExpired]);
 
   const markAttendance = useCallback(async (token: string) => {
     if (!coachName.trim()) { setResult({ success: false, message: "Please enter your name first." }); return; }
@@ -62,7 +71,7 @@ export default function ScanPage() {
       const res = await coachFetch("/attendance", {
         method: "POST",
         body: JSON.stringify({ qrToken: token.trim(), markedBy: coachName, sessionDate: date, status: "present" }),
-      });
+      }, handleExpired);
       const data = await res.json();
       if (res.status === 201) setResult({ success: true, message: "Attendance marked!", studentName: data.student?.name });
       else if (res.status === 409) setResult({ success: false, message: "Already marked for today", studentName: data.student?.name });
@@ -74,7 +83,7 @@ export default function ScanPage() {
       setManualToken("");
       setTimeout(() => { cooldownRef.current = false; }, 2500);
     }
-  }, [coachName, date]);
+  }, [coachName, date, handleExpired]);
 
   // Camera scanning loop
   const scanLoop = useCallback(() => {

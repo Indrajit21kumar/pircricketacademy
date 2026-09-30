@@ -28,6 +28,8 @@ function getUser(): { name: string; username: string } | null {
 }
 function clearSession() { localStorage.removeItem(REC_TOKEN_KEY); localStorage.removeItem(REC_USER_KEY); }
 
+let _onSessionExpired: (() => void) | null = null;
+
 function apiFetch(path: string, opts: RequestInit = {}) {
   const token = getToken();
   return fetch(`/api${path}`, {
@@ -37,6 +39,12 @@ function apiFetch(path: string, opts: RequestInit = {}) {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(opts.headers || {}),
     },
+  }).then(res => {
+    if (res.status === 401) {
+      clearSession();
+      _onSessionExpired?.();
+    }
+    return res;
   });
 }
 
@@ -879,8 +887,21 @@ export default function ReceptionPortal() {
   const [loggedIn, setLoggedIn] = useState(!!getToken());
   const [userName, setUserName] = useState(() => getUser()?.name || "");
   const [tab, setTab] = useState<Tab>("attendance");
+  const [sessionExpired, setSessionExpired] = useState(false);
 
-  if (!loggedIn) return <ReceptionLogin onLogin={name => { setUserName(name); setLoggedIn(true); }} />;
+  // Wire up global 401 handler so any expired-token response forces re-login
+  _onSessionExpired = () => { setLoggedIn(false); setSessionExpired(true); };
+
+  if (!loggedIn) return (
+    <>
+      {sessionExpired && (
+        <div className="fixed top-0 left-0 right-0 bg-red-500 text-white text-sm font-bold text-center py-2 z-50">
+          Session expired — please sign in again
+        </div>
+      )}
+      <ReceptionLogin onLogin={name => { setUserName(name); setLoggedIn(true); setSessionExpired(false); }} />
+    </>
+  );
 
   const tabs: { id: Tab; icon: React.ReactNode; label: string }[] = [
     { id: "attendance", icon: <QrCode className="h-5 w-5" />, label: "Attendance" },

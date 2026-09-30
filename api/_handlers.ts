@@ -80,7 +80,9 @@ async function handleAuth(req: VercelRequest, res: VercelResponse, sub: string[]
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) { recordFailedLogin(ip); return res.status(401).json({ error: "Invalid credentials" }); }
     clearLoginAttempts(ip);
-    const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET!, { expiresIn: "7d" });
+    // 30d for staff (coach/receptionist) so field staff don't get kicked off; admin stays 7d
+    const expiry = (user.role === "coach" || user.role === "receptionist") ? "30d" : "7d";
+    const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET!, { expiresIn: expiry });
     return res.json({ token, user: { id: user.id, username: user.username, role: user.role, name: user.name } });
   }
   return res.status(404).json({ error: "Not found" });
